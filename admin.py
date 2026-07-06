@@ -12,7 +12,7 @@ from logger import *
 from database import *
 from licencias import *
 from giveaway import *
-from botones import *
+from keyboards import *
 from admin_premium import *
 from datetime import datetime
 
