@@ -4,7 +4,7 @@
 # ✅ VERSIÓN MONGODB
 # ==============================================
 from datetime import datetime
-from database import *  # 🍃 Conexión a la base de datos
+from database import *  # 🍃 Conexión a la base  # 🍃 Conexión a la base de datos
 
 # ==============================================
 # ✅ VERIFICAR Y REGISTRAR USUARIO
