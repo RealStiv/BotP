@@ -23,6 +23,7 @@ import sys
 from datetime import datetime
 
 # 🔌 CONEXIÓN A MÓDULOS PROPIOS
+from users import *
 from config import *
 from security import *
 from giveaway import *       # 🎁 SISTEMA DE GIVEAWAYS
