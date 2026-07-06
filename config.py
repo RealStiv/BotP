@@ -16,9 +16,9 @@ API_KEY = "79aa52573ecd3008ec2fac0ce251c487"
 ADMIN_ID = 8831594637
 
 # 📢 ID DEL CANAL DONDE LLEGARÁN LOS LOGS
-CHANNEL_LOGS = -1001234567890  # 👈 REEMPLAZA ESTO CON EL ID DE TU CANAL
+CHANNEL_LOGS = -1004364812976  # 👈 REEMPLAZA ESTO CON EL ID DE TU CANAL
 
 # 🍃 CONEXIÓN MONGODB
 # ⚠️ IMPORTANTE: Pon tu URL de conexión aquí
-MONGO_URI = "mongodb+srv://usuario:contraseña@cluster0.mongodb.net/"
-MONGO_DB_NAME = "NombreDeTuBaseDeDatos"
+MONGO_URI = "mongodb+srv://robertotinta1957_db_user:Badak9080.@novobot.yfkxqnh.mongodb.net/"
+MONGO_DB_NAME = "NovoBot"
