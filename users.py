@@ -1,10 +1,18 @@
 # ==============================================
 # 🔐 SISTEMA DE GESTIÓN DE USUARIOS
 # ==============================================
-# ✅ VERSIÓN MONGODB
+# ✅ VERSIÓN MONGODB - COMPATIBLE CON RAILWAY
 # ==============================================
 from datetime import datetime
-from database import *  # 🍃 Conexión a la base  # 🍃 Conexión a la base de datos
+from pymongo import MongoClient
+import os
+
+# 🍃 CONEXIÓN DIRECTA A MONGODB
+client = MongoClient(os.getenv("MONGO_URI"))
+db = client[os.getenv("MONGO_DB_NAME")]
+
+# 📂 COLECCIÓN
+usuarios_col = db["usuarios"]
 
 # ==============================================
 # ✅ VERIFICAR Y REGISTRAR USUARIO
@@ -32,7 +40,6 @@ def verificar_o_crear_usuario(uid, nombre="Usuario"):
             "estado": "activo"
         }
         usuarios_col.insert_one(datos_nuevo)
-        print(f"✅ Nuevo usuario registrado en DB: {nombre} (ID: {uid})")
         return True # Retorna True si es nuevo
         
     else:
