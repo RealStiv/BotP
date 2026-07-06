@@ -85,3 +85,19 @@ def listar_todos():
 # ==============================================
 def usuario_existe(uid):
     return str(uid) in usuarios
+    # ==============================================
+# 📊 FUNCIONES ADICIONALES PARA ESTADÍSTICAS
+# ==============================================
+
+def total_usuarios_db():
+    return usuarios_col.count_documents({})
+
+def obtener_todos_usuarios_db():
+    return list(usuarios_col.find())
+
+def obtener_historial_premium():
+    return list(ventas_col.find())
+
+def total_ventas_db():
+    return ventas_col.count_documents({})
+
