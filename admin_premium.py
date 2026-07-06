@@ -10,7 +10,7 @@ import telebot
 from config import *
 from database import *
 from logger import *
-from botones import boton_volver_admin
+from keyboards import boton_volver_admin
 
 # ==============================================
 # 📊 ESTADÍSTICAS GENERALES
