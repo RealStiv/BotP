@@ -3,9 +3,18 @@
 # ==============================================
 
 import os
-from config import *  # ⬅️ IMPORTANTE: Esto trae los precios
+from config import *
 from database import *
 from logger import *
+
+# ==============================================
+# 💲 PRECIOS DEFINIDOS AQUÍ MISMO
+# ==============================================
+# ⚠️ Esto evita cualquier error de importación
+PRECIO_VISA = 15.00
+PRECIO_MASTERCARD = 12.00
+PRECIO_AMEX = 20.00
+PRECIO_DISCOVER = 10.00
 
 # ==============================================
 # 📦 BASES DE DATOS DE TARJETAS
