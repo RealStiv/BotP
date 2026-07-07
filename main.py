@@ -42,6 +42,8 @@ from licencias import *      # 🔑 SISTEMA DE LICENCIAS
 # ⚙️ INICIALIZACIÓN DEL BOT
 # ==============================================
 bot = telebot.TeleBot(BOT_TOKEN)
+bot.remove_webhook() # <-- AQUÍ es donde va
+time.sleep(2)
 ultima_conexion = time.time()
 
 # ==============================================
