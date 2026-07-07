@@ -207,3 +207,55 @@ def registrar_comandos_admin(bot):
             log_info(f"SOPORTE: Respuesta enviada a {uid}")
         except:
             bot.send_message(msg.chat.id, "❌ Uso correcto: /responder [ID] [texto]")
+# ==============================================
+# 💲 EDITOR DE PRECIOS DE TARJETAS
+# ==============================================
+def menu_precios_cc(bot, call):
+    from config import PRECIOS_CC
+    
+    texto = "💲 <b>GESTIONAR PRECIOS DE TARJETAS</b>\n\n"
+    texto += "🔘 Selecciona qué precio deseas cambiar:\n\n"
+    
+    for key, data in PRECIOS_CC.items():
+        texto += f"{data['nombre']}: <b>{MONEDA} {data['valor']:.2f}</b>\n"
+    
+    markup = InlineKeyboardMarkup(row_width=2)
+    
+    for key, data in PRECIOS_CC.items():
+        btn = InlineKeyboardButton(f"✏️ {data['nombre']}", callback_data=f"cambiar_precio_{key}")
+        markup.add(btn)
+    
+    btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
+    markup.add(btn_back)
+    
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+def solicitar_nuevo_precio(bot, call):
+    tipo = call.data.replace("cambiar_precio_", "")
+    nombre_tipo = PRECIOS_CC[tipo]['nombre']
+    
+    markup = ForceReply()
+    msg_pregunta = bot.send_message(call.message.chat.id, f"✏️ <b>Ingresa el nuevo precio para {nombre_tipo}:</b>\n\n(Escribe solo el número ejemplo: 15.50)", reply_markup=markup, parse_mode="HTML")
+    
+    bot.register_next_step_handler(msg_pregunta, lambda m: guardar_nuevo_precio(m, tipo, nombre_tipo))
+
+def guardar_nuevo_precio(msg, tipo, nombre_tipo):
+    try:
+        nuevo_precio = float(msg.text.replace(",", "."))
+        
+        # Actualizar en el diccionario
+        from config import PRECIOS_CC
+        PRECIOS_CC[tipo]['valor'] = nuevo_precio
+        
+        # También actualizar las variables individuales
+        globals()[f"PRECIO_{tipo.upper()}"] = nuevo_precio
+        
+        bot.send_message(msg.chat.id, f"✅ <b>PRECIO ACTUALIZADO!</b>\n\n{nombre_tipo}\nNuevo precio: {MONEDA} {nuevo_precio:.2f}", parse_mode="HTML")
+        
+        log_info(f"ADMIN: Cambió precio de {tipo} a {nuevo_precio}")
+        
+        # Volver al menú
+        menu_precios_cc(bot, msg)
+        
+    except:
+        bot.send_message(msg.chat.id, "❌ Valor inválido. Escribe solo números.")
