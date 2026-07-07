@@ -11,13 +11,13 @@ from config import *
 from database import *
 from logger import *
 
-# Importar todos los módulos
+# Importar módulos
 from comprobantes import ver_comprobantes_pendientes
 from cupones import listar_cupones_admin, crear_cupon
-from ranking import top_mejores_clientes, top_referidores
-from payment_manager import menu_gestion_pagos, editar_metodo, toggle_estado, actualizar_datos, actualizar_comision, agregar_nuevo, eliminar_metodo
+from ranking import top_mejores_clientes, top_ganancias
+from payment_manager import menu_gestion_pagos, editar_metodo, toggle_estado, actualizar_datos, actualizar_comision, agregar_metodo, eliminar_metodo
 from soporte import ver_tickets_abiertos
-from stats import obtener_estadisticas_completas, obtener_ranking_usuarios, obtener_top_servicios, obtener_reporte_completo
+from stats import obtener_dashboard, obtener_ranking_usuarios, obtener_top_servicios, obtener_reporte_completo
 from tarjetas import menu_tienda, obtener_bases, obtener_stock_total
 
 # ==============================================
@@ -30,7 +30,7 @@ def menu_admin_principal(bot, msg):
         return
     
     texto = """
-⚔️ <b>PANEL DE ADMINISTRADOR</b> ⚔️
+⚔️ <b>PANEL DE ADMINISTRADOR</b>
 
 🔧 <b>CONTROL TOTAL DEL SISTEMA</b>
 
@@ -57,30 +57,47 @@ def menu_admin_principal(bot, msg):
 # 📊 DASHBOARD
 # ==============================================
 def mostrar_dashboard(bot, call):
-    datos = obtener_estadisticas_completas()
+    datos = obtener_dashboard()
+    
+    texto = f"""
+📊 <b>DASHBOARD DEL SISTEMA</b>
+
+👥 Usuarios Totales: <b>{datos['usuarios']}</b>
+🛒 Ventas Realizadas: <b>{datos['ventas']}</b>
+💳 Stock Total: <b>{datos['stock_tarjetas']}</b>
+💰 Ganancia Total: <b>{MONEDA} {datos['ganancias']:.2f}</b>
+
+✅ Sistema estable y funcionando
+"""
+    
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
     markup.add(btn_back)
-    bot.edit_message_text(datos, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+    
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
 # 🎫 SOPORTE
 # ==============================================
 def mostrar_tickets(bot, call):
     texto = ver_tickets_abiertos()
+    
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
     markup.add(btn_back)
+    
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
 # 🏆 RANKINGS
 # ==============================================
 def mostrar_rankings(bot, call):
-    texto = top_mejores_clientes() + "\n\n" + top_referidores()
+    texto = top_mejores_clientes() + "\n\n" + top_ganancias()
+    
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
     markup.add(btn_back)
+    
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
@@ -95,9 +112,11 @@ def mostrar_gestion_pagos(bot, call):
 # ==============================================
 def mostrar_comprobantes(bot, call):
     texto, compras = ver_comprobantes_pendientes()
+    
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
     markup.add(btn_back)
+    
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
@@ -106,10 +125,11 @@ def mostrar_comprobantes(bot, call):
 def mostrar_gestion_tarjetas(bot, call):
     texto = menu_tienda()
     bases = obtener_bases()
+    
     markup = InlineKeyboardMarkup(row_width=2)
     
-    for key, db_info in bases.items():
-        btn = InlineKeyboardButton(f"{db_info['nombre']} ({len(db_info['tarjetas'])})", callback_data=f"vender_cc_{key}")
+    for key, data in bases.items():
+        btn = InlineKeyboardButton(f"{data['nombre']} ({len(data['tarjetas'])})", callback_data=f"ver_stock_{key}")
         markup.add(btn)
     
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
@@ -118,16 +138,16 @@ def mostrar_gestion_tarjetas(bot, call):
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# 💲 EDITOR DE PRECIOS DE TARJETAS
+# 💲 EDITOR DE PRECIOS
 # ==============================================
 def menu_precios_cc(bot, call):
     from config import PRECIOS_CC
     
-    texto = "💲 <b>GESTIONAR PRECIOS DE TARJETAS</b>\n\n"
+    texto = "💲 <b>GESTIÓN DE PRECIOS</b>\n\n"
     texto += "🔘 Selecciona qué precio deseas cambiar:\n\n"
     
     for key, data in PRECIOS_CC.items():
-        texto += f"{data['nombre']}: <b>{MONEDA} {data['valor']:.2f}</b>\n"
+        texto += f"{data['nombre']}: <b>{MONEDA} {data['precio']:.2f}</b>\n"
     
     markup = InlineKeyboardMarkup(row_width=2)
     
@@ -145,7 +165,7 @@ def solicitar_nuevo_precio(bot, call):
     nombre_tipo = PRECIOS_CC[tipo]['nombre']
     
     markup = ForceReply()
-    msg_pregunta = bot.send_message(call.message.chat.id, f"✏️ <b>Ingresa el nuevo precio para {nombre_tipo}:</b>\n\n(Escribe solo el número ejemplo: 15.50)", reply_markup=markup, parse_mode="HTML")
+    msg_pregunta = bot.send_message(call.message.chat.id, f"✍️ <b>Ingresa el nuevo precio para {nombre_tipo}:</b>\n\n(Escribe solo el número ejemplo: 15.50)", reply_markup=markup, parse_mode="HTML")
     
     bot.register_next_step_handler(msg_pregunta, lambda m: guardar_nuevo_precio(m, tipo, nombre_tipo))
 
@@ -154,13 +174,11 @@ def guardar_nuevo_precio(msg, tipo, nombre_tipo):
         nuevo_precio = float(msg.text.replace(",", "."))
         
         from config import PRECIOS_CC
-        PRECIOS_CC[tipo]['valor'] = nuevo_precio
+        PRECIOS_CC[tipo]['precio'] = nuevo_precio
         
-        bot.send_message(msg.chat.id, f"✅ <b>PRECIO ACTUALIZADO!</b>\n\n{nombre_tipo}\nNuevo precio: {MONEDA} {nuevo_precio:.2f}", parse_mode="HTML")
+        bot.send_message(msg.chat.id, f"✅ <b>PRECIO ACTUALIZADO!</b>\n\n{nombre_tipo}: Ahora vale {MONEDA} {nuevo_precio:.2f}", parse_mode="HTML")
         
         log_info(f"ADMIN: Cambió precio de {tipo} a {nuevo_precio}")
-        
-        menu_precios_cc(bot, msg)
         
     except:
         bot.send_message(msg.chat.id, "❌ Valor inválido. Escribe solo números.")
@@ -173,7 +191,7 @@ def handle_admin_callback(bot, call):
     
     if data == "admin_menu":
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        menu_admin_principal(bot, call)
+        menu_admin_principal(bot, call.message)
     
     elif data == "admin_dashboard":
         mostrar_dashboard(bot, call)
@@ -207,21 +225,19 @@ def handle_admin_callback(bot, call):
     
     elif data.startswith("toggle_"):
         key = data.replace("toggle_", "")
-        resultado = toggle_estado(key, call.from_user.id)
+        resultado = toggle_estado(key)
         bot.answer_callback_query(call.id, resultado, show_alert=True)
         texto, markup = menu_gestion_pagos()
         bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# 📝 COMANDOS DE ADMIN
+# 📝 REGISTRAR COMANDOS
 # ==============================================
 def registrar_comandos_admin(bot):
-    # Comando /admin
     @bot.message_handler(commands=['admin'])
     def cmd_admin(msg):
         menu_admin_principal(bot, msg)
     
-    # Comando /responder
     @bot.message_handler(commands=['responder'])
     def cmd_responder(msg):
         if msg.from_user.id != ADMIN_ID:
@@ -232,8 +248,7 @@ def registrar_comandos_admin(bot):
             uid = partes[1]
             respuesta = partes[2]
             
-            bot.send_message(uid, f"📩 <b>RESPUESTA DEL ADMINISTRADOR</b>\n\n{respuesta}", parse_mode="HTML")
+            bot.send_message(uid, f"📩 <b>RESPUESTA DEL ADMIN:</b>\n\n{respuesta}", parse_mode="HTML")
             bot.send_message(msg.chat.id, "✅ Mensaje enviado correctamente.")
-            log_info(f"SOPORTE: Respuesta enviada a {uid}")
         except:
-            bot.send_message(msg.chat.id, "❌ Uso correcto: /responder [ID] [texto]")
+            bot.send_message(msg.chat.id, "❌ Uso: /responder [ID] [mensaje]")
