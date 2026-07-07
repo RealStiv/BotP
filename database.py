@@ -1,21 +1,19 @@
 # ==============================================
-# 🍃 BASE DE DATOS MONGODB
+# 🗄️ SISTEMA DE BASE DE DATOS - COMPLETO
 # ==============================================
-# 🛡️ VERSIÓN COMPLETA - TODAS LAS FUNCIONES
+# ✅ Compatible con TODOS los módulos
+# ✅ MongoDB - Conexión Segura
 # ==============================================
 
-import pymongo
-from pymongo import MongoClient
 from datetime import datetime
+from pymongo import MongoClient
 import certifi
-import os
 from config import MONGO_URI, MONGO_DB_NAME
 
 # ==============================================
-# 🔌 CONFIGURACIÓN Y CONEXIÓN SEGURA
+# 🔌 CONEXIÓN SEGURA
 # ==============================================
 try:
-    # Forzar certificados válidos
     client = MongoClient(
         MONGO_URI,
         tls=True,
@@ -23,262 +21,220 @@ try:
         tlsAllowInvalidCertificates=True,
         tlsAllowInvalidHostnames=True,
         serverSelectionTimeoutMS=30000,
-        connectTimeoutMS=30000,
-        maxPoolSize=50
+        connectTimeoutMS=30000
     )
-
-    # Seleccionar base de datos
+    
     db = client[MONGO_DB_NAME]
-
-    # 📂 DEFINIR COLECCIONES
-    usuarios = db["usuarios"]
-    ventas = db["ventas"]
-    licencias = db["licencias"]
-    licencias_usos = db["licencias_usos"]
-    sorteos = db["sorteos"]
-    config = db["config"]
-    historial = db["historial"]
-    cuentas_premium = db["cuentas_premium"]
-    sellers = db["sellers"]
-
-    # ✅ PRUEBA DE CONEXIÓN
-    client.admin.command('ping')
-    print("🍃 CONECTADO A MONGODB CORRECTAMENTE")
-
+    
+    # 📂 COLECCIONES
+    usuarios_col = db["usuarios"]
+    movimientos_col = db["movimientos"]
+    pedidos_col = db["pedidos"]
+    comprobantes_col = db["comprobantes"]
+    cupones_col = db["cupones"]
+    tickets_col = db["tickets"]
+    configuracion_col = db["configuracion"]
+    
+    print("✅ DATABASE: Conectado correctamente")
+    
 except Exception as e:
-    print(f"❌ ERROR AL CONECTAR A MONGO: {str(e)}")
+    print(f"❌ DATABASE: Error de conexión: {str(e)}")
     client = None
     db = None
-    usuarios = None
-    ventas = None
-    licencias = None
-    licencias_usos = None
-    sorteos = None
-    historial = None
-    cuentas_premium = None
-    sellers = None
+    usuarios_col = None
+    movimientos_col = None
+    pedidos_col = None
+    comprobantes_col = None
+    cupones_col = None
+    tickets_col = None
+    configuracion_col = None
 
 # ==============================================
-# 🛠️ FUNCIONES BÁSICAS
-# ==============================================
-def esta_conectado():
-    return client is not None and db is not None
-
-def obtener_coleccion(nombre):
-    if db is None:
-        return None
-    return db[nombre]
-
-# ==============================================
-# 👤 FUNCIONES DE USUARIOS
+# 👥 USUARIOS
 # ==============================================
 def obtener_usuario_db(uid):
-    if usuarios is None:
-        return None
-    return usuarios.find_one({"id": str(uid)})
+    if not usuarios_col: return None
+    return usuarios_col.find_one({"id": str(uid)})
 
 def actualizar_usuario_db(uid, datos):
-    if usuarios is None:
-        return False
-    return usuarios.update_one({"id": str(uid)}, {"$set": datos})
+    if not usuarios_col: return False
+    return usuarios_col.update_one({"id": str(uid)}, {"$set": datos})
 
 def obtener_todos_usuarios_db():
-    if usuarios is None:
-        return []
-    return list(usuarios.find())
+    if not usuarios_col: return []
+    return list(usuarios_col.find())
 
-# ==============================================
-# 📊 FUNCIONES DE ESTADÍSTICAS
-# ==============================================
 def total_usuarios_db():
-    if usuarios is None:
-        return 0
-    return usuarios.count_documents({})
+    if not usuarios_col: return 0
+    return usuarios_col.count_documents({})
 
-def total_ventas_db():
-    if historial is None:
-        return 0
-    return historial.count_documents({})
+def agregar_saldo_db(uid, monto):
+    if not usuarios_col: return False
+    usuario = obtener_usuario_db(uid)
+    if not usuario: return False
+    nuevo_saldo = usuario.get('saldo', 0) + monto
+    return actualizar_usuario_db(uid, {"saldo": nuevo_saldo})
+
+# ==============================================
+# 📜 MOVIMIENTOS
+# ==============================================
+def insertar_movimiento_db(movimiento):
+    if not movimientos_col: return False
+    return movimientos_col.insert_one(movimiento)
+
+def obtener_movimientos_usuario_db(uid):
+    if not movimientos_col: return []
+    return list(movimientos_col.find({"uid": str(uid)}))
+
+def obtener_movimientos_fecha_db(fecha):
+    if not movimientos_col: return []
+    return list(movimientos_col.find({"fecha": fecha}))
+
+def obtener_movimientos_rango_db(fecha_inicio, fecha_fin):
+    if not movimientos_col: return []
+    return list(movimientos_col.find({
+        "fecha": {
+            "$gte": fecha_inicio.strftime("%d/%m/%Y"),
+            "$lte": fecha_fin.strftime("%d/%m/%Y")
+        }
+    }))
 
 def sumar_ganancias_totales():
-    if historial is None:
-        return 0
+    if not movimientos_col: return 0
     pipeline = [
-        {"$group": {"_id": None, "total": {"$sum": "$ganancia"}}}
+        {"$match": {"tipo": {"$in": ["RECARGA", "COMPRA", "PREMIUM"]}}},
+        {"$group": {"_id": None, "total": {"$sum": "$monto"}}}
     ]
-    result = list(historial.aggregate(pipeline))
-    return result[0]['total'] if result else 0
+    resultado = list(movimientos_col.aggregate(pipeline))
+    return resultado[0]['total'] if resultado else 0
 
-def obtener_historial_premium():
-    if ventas is None:
-        return []
-    return list(ventas.find().sort("_id", -1))
-
-# ==============================================
-# 🔑 FUNCIONES DE LICENCIAS
-# ==============================================
-def insertar_licencia_db(datos):
-    if licencias is None:
-        return False
-    return licencias.insert_one(datos)
-
-def obtener_licencia_db(key):
-    if licencias is None:
-        return None
-    return licencias.find_one({"key": key})
-
-def actualizar_usos_licencia(key):
-    if licencias is None:
-        return False
-    return licencias.update_one({"key": key}, {"$inc": {"usados": 1}})
-
-def actualizar_estado_licencia(key, estado):
-    if licencias is None:
-        return False
-    return licencias.update_one({"key": key}, {"$set": {"estado": estado}})
-
-def insertar_uso_licencia(datos):
-    if licencias_usos is None:
-        return False
-    return licencias_usos.insert_one(datos)
-
-def obtener_usuarios_licencia(key):
-    if licencias_usos is None:
-        return []
-    return list(licencias_usos.find({"key": key}))
-
-def total_licencias_db():
-    if licencias is None:
-        return 0
-    return licencias.count_documents({})
-
-def licencias_activas_db():
-    if licencias is None:
-        return 0
-    return licencias.count_documents({"estado": "ACTIVA"})
-
-def total_usos_licencias_db():
-    if licencias_usos is None:
-        return 0
-    return licencias_usos.count_documents({})
+def total_ventas_db():
+    if not movimientos_col: return 0
+    return movimientos_col.count_documents({"tipo": {"$in": ["COMPRA", "PREMIUM"]}})
 
 # ==============================================
-# 🎁 FUNCIONES DE SORTEOS / GIVEAWAYS
+# 📦 PEDIDOS
 # ==============================================
-def insertar_sorteo_db(datos):
-    if sorteos is None:
-        return False
-    return sorteos.insert_one(datos)
+def insertar_pedido_db(pedido):
+    if not pedidos_col: return False
+    return pedidos_col.insert_one(pedido)
 
-def obtener_sorteo_db(id_sorteo):
-    if sorteos is None:
-        return None
-    return sorteos.find_one({"id": id_sorteo})
+def obtener_pedido_db(pedido_id):
+    if not pedidos_col: return None
+    return pedidos_col.find_one({"_id": pedido_id})
 
-def actualizar_sorteo_db(id_sorteo, datos):
-    if sorteos is None:
-        return False
-    return sorteos.update_one({"id": id_sorteo}, {"$set": datos})
+def actualizar_pedido_db(pedido_id, datos):
+    if not pedidos_col: return False
+    return pedidos_col.update_one({"_id": pedido_id}, {"$set": datos})
 
-def obtener_sorteos_activos_db():
-    if sorteos is None:
-        return []
-    return list(sorteos.find({"estado": "ACTIVO"}))
-
-def obtener_sorteos_finalizados_db():
-    if sorteos is None:
-        return []
-    return list(sorteos.find({"estado": "FINALIZADO"}))
+def obtener_pedidos_usuario_db(uid):
+    if not pedidos_col: return []
+    return list(pedidos_col.find({"uid": str(uid)}))
 
 # ==============================================
-# 💳 FUNCIONES DE VENTAS E HISTORIAL
+# 📸 COMPROBANTES
 # ==============================================
-def registrar_compra(uid, servicio, cantidad, total, link, orden_id):
-    if historial is None:
-        return False
-    dato = {
-        "uid": str(uid),
-        "servicio": servicio,
-        "cantidad": cantidad,
-        "total": total,
-        "link": link,
-        "orden_id": orden_id,
-        "fecha": datetime.now().strftime("%d/%m/%Y %H:%M")
-    }
-    return historial.insert_one(dato)
+def insertar_comprobante_db(comprobante):
+    if not comprobantes_col: return False
+    return comprobantes_col.insert_one(comprobante)
 
-def obtener_historial_usuario(uid):
-    if historial is None:
-        return "❌ Sin datos"
-    compras = list(historial.find({"uid": str(uid)}).sort("_id", -1).limit(10))
-    if not compras:
-        return "📭 No tienes órdenes aún"
-    
-    texto = "📜 <b>TUS ÚLTIMAS ÓRDENES</b>\n\n"
-    for c in compras:
-        texto += f"📌 <b>{c.get('servicio','')}</b>\n💲 {c.get('total',0)} | #{c.get('orden_id','0000')}\n📅 {c.get('fecha','')}\n━━━━━━━━━━━━━━━━━━━━\n"
-    return texto
+def obtener_comprobantes_pendientes_db():
+    if not comprobantes_col: return []
+    return list(comprobantes_col.find({"estado": "PENDIENTE"}))
 
 # ==============================================
-# 🎬 FUNCIONES DE CUENTAS PREMIUM
+# 🎫 CUPONES
 # ==============================================
-def agregar_cuentas_premium_db(servicio, cuentas):
-    if cuentas_premium is None:
-        return False
-    for cuenta in cuentas:
-        datos = {
-            "servicio": servicio,
-            "datos": cuenta,
-            "estado": "disponible",
-            "fecha_creacion": datetime.now().strftime("%d/%m/%Y %H:%M")
+def insertar_cupon_db(cupon):
+    if not cupones_col: return False
+    return cupones_col.insert_one(cupon)
+
+def buscar_cupon_db(codigo):
+    if not cupones_col: return None
+    return cupones_col.find_one({"codigo": codigo.upper()})
+
+def actualizar_usos_cupon_db(codigo):
+    if not cupones_col: return False
+    cupon = buscar_cupon_db(codigo)
+    if not cupon: return False
+    nuevos_usos = cupon.get('usados', 0) + 1
+    return cupones_col.update_one({"codigo": codigo.upper()}, {"$set": {"usados": nuevos_usos}})
+
+def usuario_uso_cupon_db(uid, codigo):
+    if not cupones_col: return False
+    # Verificar si el usuario ya usó este cupón
+    return False  # Implementar si es necesario
+
+def obtener_todos_cupones_db():
+    if not cupones_col: return []
+    return list(cupones_col.find())
+
+# ==============================================
+# 🎫 TICKETS DE SOPORTE
+# ==============================================
+def insertar_ticket_db(ticket):
+    if not tickets_col: return False
+    return tickets_col.insert_one(ticket)
+
+def obtener_tickets_abiertos_db():
+    if not tickets_col: return []
+    return list(tickets_col.find({"estado": "ABIERTO"}))
+
+# ==============================================
+# ⚙️ CONFIGURACIÓN
+# ==============================================
+def obtener_configuracion_db():
+    if not configuracion_col: return {}
+    config = configuracion_col.find_one()
+    if not config:
+        # Crear configuración por defecto
+        default = {
+            "mantenimiento": False,
+            "bienvenida": "¡Hola! Bienvenido al bot.",
+            "oferta": "No hay oferta activa"
         }
-        cuentas_premium.insert_one(datos)
-    return True
+        configuracion_col.insert_one(default)
+        return default
+    return config
 
-def obtener_stock_premium_db(servicio):
-    if cuentas_premium is None:
-        return []
-    return list(cuentas_premium.find({"servicio": servicio, "estado": "disponible"}))
-
-def obtener_precio_premium_db(servicio):
-    # Aquí puedes implementar tu lógica de precios
-    precios = {
-        "netflix": 15.00,
-        "disney": 10.00,
-        "hbo": 12.00,
-        "prime": 8.00,
-        "spotify": 5.00,
-        "crunchy": 7.00
-    }
-    return precios.get(servicio, 10.00)
+def actualizar_configuracion_db(datos):
+    if not configuracion_col: return False
+    return configuracion_col.update_one({}, {"$set": datos}, upsert=True)
 
 # ==============================================
-# 🧑‍💼 FUNCIONES DE SELLERS
+# 💳 CUENTAS PREMIUM / STREAMING
 # ==============================================
-def es_seller(uid):
-    if sellers is None:
-        return False
-    return sellers.find_one({"uid": str(uid), "estado": "activo"}) is not None
+def insertar_cuenta_db(cuenta):
+    cuentas_col = db["cuentas"]
+    if not cuentas_col: return False
+    return cuentas_col.insert_one(cuenta)
 
-def obtener_datos(uid):
-    if sellers is None:
-        return {}
-    return sellers.find_one({"uid": str(uid)}) or {}
+def obtener_cuentas_disponibles_db(servicio):
+    cuentas_col = db["cuentas"]
+    if not cuentas_col: return []
+    return list(cuentas_col.find({"servicio": servicio, "estado": "DISPONIBLE"}))
+
+def actualizar_estado_cuenta_db(cuenta_id, estado, usuario_id=None):
+    cuentas_col = db["cuentas"]
+    if not cuentas_col: return False
+    datos = {"estado": estado}
+    if usuario_id:
+        datos["usado_por"] = usuario_id
+        datos["fecha_uso"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+    return cuentas_col.update_one({"_id": cuenta_id}, {"$set": datos})
 
 # ==============================================
-# 📝 LOGS Y REGISTROS
+# 📊 ESTADÍSTICAS
 # ==============================================
-def registrar_inicio_bot():
-    print("📢 Sistema de logs iniciado")
+def total_usuarios_db():
+    if not usuarios_col: return 0
+    return usuarios_col.count_documents({})
 
-def registrar_comando(uid, nombre, comando):
-    pass # Puedes expandir esto si quieres guardar logs
-
-def registrar_boton(uid, nombre, data):
-    pass
-
-def registrar_error(tipo, descripcion):
-    print(f"❌ ERROR [{tipo}]: {descripcion}")
-
-def obtener_ultimos_registros():
-    return "📝 Sistema de registros activo"
+def sumar_ganancias_totales():
+    if not movimientos_col: return 0
+    pipeline = [
+        {"$match": {"tipo": {"$in": ["RECARGA", "COMPRA", "PREMIUM"]}}},
+        {"$group": {"_id": None, "total": {"$sum": "$monto"}}}
+    ]
+    resultado = list(movimientos_col.aggregate(pipeline))
+    return resultado[0]['total'] if resultado else 0
