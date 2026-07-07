@@ -424,12 +424,12 @@ def botones_avanzado(c):
     # DEPOSITAR
     elif data == "depositar":
         txt = obtener_metodos_pago()
-        bot.send_message(c.message.chat.id, txt, parse_mode="HTML", reply_markup=boton_volver())
+        bot.send_message(msg.chat.id, txt, parse_mode="HTML", reply_markup=boton_volver())
         
     # ORDENES
     elif data == "ordenes":
         hist = obtener_historial_usuario(uid)
-        bot.send_message(c.message.chat.id, hist, parse_mode="HTML", reply_markup=boton_volver())
+        bot.send_message(msg.chat.id, hist, parse_mode="HTML", reply_markup=boton_volver())
         
     # 👑 OPCIONES DE ADMIN (CON BOTONES)
     elif data.startswith('admin_'):
@@ -515,7 +515,7 @@ def proceso_final(msg, sid, cant, total, ganancia):
         bot.send_message(msg.chat.id, f"❌ <b>ERROR</b>\n{res.get('error','Error desconocido')}", parse_mode="HTML")
 
 # ==============================================
-# ▶️ INICIO DEL SISTEMA
+# ▶️ INICIO DEL SISTEMA - VERSIÓN ESTABLE
 # ==============================================
 if __name__ == "__main__":
     print("\033[92m")
@@ -533,8 +533,16 @@ if __name__ == "__main__":
     print(f"\033[94m[INFO]\033[0m Panel Maestro: LISTO")
     print(f"\033[94m[INFO]\033[0m SISTEMA 100% OPERATIVO")
     print("\033[92m🚀 INICIANDO BOT...\033[0m")
-    try:
-        bot.polling(none_stop=True, interval=0)
-    except Exception as e:
-        print(f"\033[91m[ERROR]\033[0m {str(e)}")
-        registrar_error("CRASH", str(e))
+    
+    # 🔄 SISTEMA DE RECONEXIÓN AUTOMÁTICA
+    while True:
+        try:
+            # Eliminar webhooks antiguos para evitar error 409
+            bot.remove_webhook()
+            time.sleep(1)
+            # Iniciar polling estable
+            bot.polling(none_stop=True, interval=0, timeout=20)
+        except Exception as e:
+            print(f"\033[91m[ERROR]\033[0m Reconectando... {str(e)}")
+            registrar_error("RECONEXION", str(e))
+            time.sleep(5)
