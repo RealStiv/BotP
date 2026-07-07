@@ -107,7 +107,7 @@ def activar_licencia(uid, nombre, key):
     insertar_uso_licencia(registro_uso)
     
     # 📝 GUARDAR EN DATOS DEL USUARIO
-    actualizar_licencia_usuario(uid, datos['tipo'], dias, fecha_fin.strftime("%d/%m/%Y"))
+    actualizar_licencia_usuario(uid, datos['tipo'], fecha_fin.strftime("%d/%m/%Y"))
     
     # 📢 LOG EN CANAL
     txt = f"""
@@ -134,7 +134,7 @@ def activar_licencia(uid, nombre, key):
 # ==============================================
 # 👤 GESTIÓN POR USUARIO
 # ==============================================
-def actualizar_licencia_usuario(uid, plan, dias, fecha_fin):
+def actualizar_licencia_usuario(uid, plan, fecha_fin):
     """Actualizar datos de licencia en la colección usuarios"""
     datos = {
         "licencia_plan": plan,
@@ -158,6 +158,15 @@ def verificar_licencia_usuario(uid):
         pass
     
     return True, usuario['licencia_plan']
+
+def verificar_uso_licencia(key, uid):
+    """Verifica si este usuario ya usó esta key"""
+    usos = obtener_usuarios_licencia(key)
+    uid_str = str(uid)
+    for uso in usos:
+        if uso.get('uid') == uid_str:
+            return True
+    return False
 
 # ==============================================
 # 📋 VER INFORMACIÓN DE UNA KEY
