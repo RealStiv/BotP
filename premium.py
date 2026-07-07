@@ -174,12 +174,14 @@ def calcular_precio_y_comision(uid, precio_base):
     
     if es_seller(uid):
         datos = obtener_datos(uid)
-        comision = datos['info_nivel']['comision']
-        precio_final = precio_base * (1 - comision / 100)
-        ganancia = precio_base - precio_final
-        return round(precio_final, 2), round(ganancia, 2)
+        if datos and "info_nivel" in datos:
+            comision = datos['info_nivel']['comision']
+            precio_final = precio_base * (1 - comision / 100)
+            ganancia = precio_base - precio_final
+            return round(precio_final, 2), round(ganancia, 2)
     
-    return precio_base, precio_base  # Si es usuario normal, ganancia = precio total
+    # Si es usuario normal o no hay datos de seller
+    return precio_base, precio_base
 
 # ==============================================
 # 📊 VER STOCK PARA PANEL ADMIN
