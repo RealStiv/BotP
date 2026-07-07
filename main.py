@@ -1,4 +1,12 @@
 # ==============================================
+# 🔐 FORZAR CERTIFICADOS SSL - OBLIGATORIO RAILWAY
+# ==============================================
+import os
+import certifi
+os.environ['SSL_CERT_FILE'] = certifi.where()
+# ==============================================
+
+# ==============================================
 # 🤖 BOT SMM - VERSIÓN MAESTRA v6.0
 # ==============================================
 # ✅ Panel Admin Completo con Botones
@@ -18,8 +26,6 @@
 import telebot
 import requests
 import time
-import os
-import sys
 from datetime import datetime
 
 # 🔌 CONEXIÓN A MÓDULOS PROPIOS
@@ -42,7 +48,7 @@ from licencias import *      # 🔑 SISTEMA DE LICENCIAS
 # ⚙️ INICIALIZACIÓN DEL BOT
 # ==============================================
 bot = telebot.TeleBot(BOT_TOKEN)
-bot.remove_webhook() # <-- AQUÍ es donde va
+bot.remove_webhook()
 time.sleep(2)
 ultima_conexion = time.time()
 
@@ -201,7 +207,7 @@ def start(msg):
         registrar_usuario_nuevo(uid, nombre)  # 📢 LOG
     
     # 🔑 VERIFICAR LICENCIA
-    tiene_licencia, plan = verificar_licencia_activa(uid)
+    tiene_licencia, plan = verificar_licencia_usuario(uid)
     if not tiene_licencia:
         bot.send_message(msg.chat.id, f"""
 🔒 <b>ACCESO RESTRINGIDO</b>
@@ -439,7 +445,7 @@ def botones_avanzado(c):
         
     # 🎬 OPCIONES DE PREMIUM
     elif data.startswith('premium_'):
-        procesar_premium(bot, c)
+        procesar_admin_premium(bot, c)
         
     # 🧑‍💼 OPCIONES DE SELLERS
     elif data.startswith('s_'):
