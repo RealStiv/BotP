@@ -3,16 +3,37 @@
 # ==============================================
 # ✅ VERSIÓN MONGODB - COMPATIBLE CON RAILWAY
 # ==============================================
+
 from datetime import datetime
 from pymongo import MongoClient
+import certifi
 import os
+from config import MONGO_URI, MONGO_DB_NAME
 
-# 🍃 CONEXIÓN DIRECTA A MONGODB
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client[os.getenv("MONGO_DB_NAME")]
+# ==============================================
+# 🔌 CONEXIÓN SEGURA A MONGODB
+# ==============================================
+try:
+    # 🛡️ Configuración especial para evitar errores SSL
+    client = MongoClient(
+        MONGO_URI,
+        tls=True,
+        tlsCAFile=certifi.where(),
+        tlsAllowInvalidCertificates=True,
+        tlsAllowInvalidHostnames=True,
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=30000
+    )
+    
+    db = client[MONGO_DB_NAME]
+    usuarios_col = db["usuarios"]
+    print("👥 Módulo Usuarios cargado correctamente")
 
-# 📂 COLECCIÓN
-usuarios_col = db["usuarios"]
+except Exception as e:
+    print(f"❌ Error en Users DB: {str(e)}")
+    client = None
+    db = None
+    usuarios_col = None
 
 # ==============================================
 # ✅ VERIFICAR Y REGISTRAR USUARIO
@@ -23,6 +44,9 @@ def verificar_o_crear_usuario(uid, nombre="Usuario"):
     Si NO existe: lo crea con datos iniciales.
     Si SÍ existe: solo devuelve los datos.
     """
+    if usuarios_col is None:
+        return False # Sin conexión
+        
     uid = str(uid)
     
     # Buscar en la base de datos
@@ -55,6 +79,9 @@ def verificar_o_crear_usuario(uid, nombre="Usuario"):
 # ==============================================
 def actualizar_saldo(uid, cantidad, motivo="Operación"):
     """Suma o resta saldo de forma segura en MongoDB"""
+    if usuarios_col is None:
+        return 0.00
+        
     uid = str(uid)
     
     # Obtener saldo actual
@@ -87,11 +114,15 @@ def actualizar_saldo(uid, cantidad, motivo="Operación"):
     return nuevo_saldo
 
 def obtener_saldo(uid):
+    if usuarios_col is None:
+        return 0.00
     uid = str(uid)
     usuario = usuarios_col.find_one({"id": uid})
     return usuario.get("saldo", 0.00) if usuario else 0.00
 
 def obtener_nivel(uid):
+    if usuarios_col is None:
+        return "👤 Usuario Normal"
     uid = str(uid)
     usuario = usuarios_col.find_one({"id": uid})
     return usuario.get("nivel", "👤 Usuario Normal") if usuario else "👤 Usuario Normal"
@@ -100,16 +131,22 @@ def obtener_nivel(uid):
 # 📋 OBTENER DATOS COMPLETOS
 # ==============================================
 def get_user_data(uid):
+    if usuarios_col is None:
+        return None
     uid = str(uid)
     return usuarios_col.find_one({"id": uid})
 
 def listar_todos():
+    if usuarios_col is None:
+        return []
     return list(usuarios_col.find())
 
 # ==============================================
 # 🧹 LIMPIEZA Y MANTENIMIENTO
 # ==============================================
 def usuario_existe(uid):
+    if usuarios_col is None:
+        return False
     return usuarios_col.find_one({"id": str(uid)}) is not None
 
 # ==============================================
