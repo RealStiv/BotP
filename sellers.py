@@ -6,7 +6,7 @@
 # ✅ SISTEMA DE LOGS 📢
 # ==============================================
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from config import *
 from logger import *      # 📝 SISTEMA DE LOGS
 from database import *    # 🍃 MONGODB
@@ -71,7 +71,7 @@ def crear_seller(uid, nombre, nivel="novato", admin_id="Admin"):
         nivel = "novato"
     
     datos = {
-        "id": uid,
+        "uid": uid,
         "nombre": nombre,
         "nivel": nivel,
         "fecha_registro": datetime.now().strftime("%d/%m/%Y"),
@@ -85,7 +85,8 @@ def crear_seller(uid, nombre, nivel="novato", admin_id="Admin"):
     }
     
     # Guardar en MongoDB
-    guardar_seller_db(datos)
+    if sellers is not None:
+        sellers.insert_one(datos)
     
     # 📝 LOG
     log_info(f"SELLER: Nuevo vendedor creado | {nombre} | Nivel: {nivel} | por Admin {admin_id}")
@@ -96,14 +97,21 @@ def crear_seller(uid, nombre, nivel="novato", admin_id="Admin"):
 # 🔍 VERIFICACIONES
 # ==============================================
 def es_seller(uid):
+    """Verifica si el usuario es vendedor"""
     uid = str(uid)
-    return verificar_seller_db(uid)  # Desde MongoDB
+    if sellers is None:
+        return False
+    return sellers.find_one({"uid": uid, "estado": "activo"}) is not None
 
 def obtener_datos(uid):
+    """Obtiene datos completos con información de nivel"""
     uid = str(uid)
-    datos = obtener_datos_seller_db(uid)
+    if sellers is None:
+        return None
+    
+    datos = sellers.find_one({"uid": uid})
     if datos:
-        datos["info_nivel"] = NIVELES[datos["nivel"]]
+        datos["info_nivel"] = NIVELES.get(datos["nivel"], NIVELES["novato"])
         return datos
     return None
 
@@ -126,7 +134,21 @@ def registrar_venta_reseller(uid, producto, precio_publico, ganancia):
     """Registra una venta y actualiza saldo en MongoDB"""
     uid = str(uid)
     
-    actualizar_ganancias_seller(uid, ganancia, precio_publico)
+    if sellers is None:
+        return False
+    
+    # Actualizar saldo y contadores
+    sellers.update_one(
+        {"uid": uid},
+        {
+            "$inc": {
+                "saldo_ganancias": ganancia,
+                "total_vendido": precio_publico,
+                "ventas_realizadas": 1
+            },
+            "$set": {"ultima_venta": datetime.now().strftime("%d/%m/%Y %H:%M")}
+        }
+    )
     
     # Historial
     venta = {
@@ -136,7 +158,9 @@ def registrar_venta_reseller(uid, producto, precio_publico, ganancia):
         "precio_publico": precio_publico,
         "ganancia": ganancia
     }
-    guardar_venta_seller_db(venta)
+    
+    if "ventas_sellers" in db.list_collection_names():
+        db["ventas_sellers"].insert_one(venta)
     
     return True
 
@@ -145,25 +169,30 @@ def registrar_venta_reseller(uid, producto, precio_publico, ganancia):
 # ==============================================
 def registrar_venta_seller(uid, nombre_usuario, producto, monto, ganancia):
     """Log para el canal principal"""
+    datos_seller = obtener_datos(uid)
+    nombre_vendedor = datos_seller['nombre'] if datos_seller else "Desconocido"
+    
     txt = f"""
 🧑‍💼 <b>¡VENTA POR RESELLER!</b>
-👤 Vendedor: {obtener_datos(uid)['nombre']}
+━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Vendedor: <b>{nombre_vendedor}</b>
 🆔 ID Vendedor: <code>{uid}</code>
-👥 Cliente: {nombre_usuario}
-📦 Producto: {producto}
-💸 Monto: {MONEDA} {monto}
-💰 Ganancia: {MONEDA} {ganancia}
+👥 Cliente: <b>{nombre_usuario}</b>
+📦 Producto: <b>{producto}</b>
+💸 Monto: <b>{MONEDA} {monto}</b>
+💰 Ganancia: <b>{MONEDA} {ganancia}</b>
+📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
     enviar_a_canal(txt)
-    log_info(f"VENTA RESELLER | Vendedor: {uid} | Ganancia: ${ganancia}")
+    log_info(f"VENTA RESELLER | Vendedor: {uid} | Ganancia: {MONEDA} {ganancia}")
 
 # ==============================================
 # ⚙️ CONTROL DE NIVELES Y PERMISOS
 # ==============================================
 def cambiar_nivel(uid, nuevo_nivel, admin_id="Admin"):
     uid = str(uid)
-    if nuevo_nivel in NIVELES:
-        actualizar_nivel_seller(uid, nuevo_nivel)
+    if nuevo_nivel in NIVELES and sellers is not None:
+        sellers.update_one({"uid": uid}, {"$set": {"nivel": nuevo_nivel}})
         
         # LOG
         log_info(f"SELLER: Nivel cambiado | {uid} -> {nuevo_nivel} por {admin_id}")
@@ -172,29 +201,38 @@ def cambiar_nivel(uid, nuevo_nivel, admin_id="Admin"):
 
 def suspender_seller(uid, admin_id="Admin"):
     uid = str(uid)
-    cambiar_estado_seller(uid, "suspendido")
-    
-    # LOG
-    log_info(f"SELLER: SUSPENDIDO | {uid} por {admin_id}")
-    return True
+    if sellers is not None:
+        sellers.update_one({"uid": uid}, {"$set": {"estado": "suspendido"}})
+        
+        # LOG
+        log_info(f"SELLER: SUSPENDIDO | {uid} por {admin_id}")
+        return True
+    return False
 
 def activar_seller(uid, admin_id="Admin"):
     uid = str(uid)
-    cambiar_estado_seller(uid, "activo")
-    
-    # LOG
-    log_info(f"SELLER: ACTIVADO | {uid} por {admin_id}")
-    return True
+    if sellers is not None:
+        sellers.update_one({"uid": uid}, {"$set": {"estado": "activo"}})
+        
+        # LOG
+        log_info(f"SELLER: ACTIVADO | {uid} por {admin_id}")
+        return True
+    return False
 
 # ==============================================
 # 📊 ESTADÍSTICAS
 # ==============================================
 def obtener_ranking():
     """Retorna top sellers"""
-    lista = obtener_top_sellers_db()
-    return lista[:10] if lista else []
+    if sellers is None:
+        return []
+    return list(sellers.find().sort("total_vendido", -1).limit(10))
 
 def stats_sellers():
-    total = total_sellers_db()
-    activos = activos_sellers_db()
+    """Estadísticas generales"""
+    if sellers is None:
+        return "📊 Sin datos"
+    
+    total = sellers.count_documents({})
+    activos = sellers.count_documents({"estado": "activo"})
     return f"📊 Total: {total} | Activos: {activos}"
