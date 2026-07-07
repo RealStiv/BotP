@@ -150,7 +150,8 @@ Ejemplo:
     # 📜 HISTORIAL
     elif data == "admin_historial_premium":
         texto = "📜 <b>ÚLTIMAS VENTAS REALIZADAS</b>\n\n"
-        ventas = obtener_historial_premium()[-10:] if len(obtener_historial_premium()) > 10 else obtener_historial_premium()
+        todas_ventas = obtener_historial_premium()
+        ventas = todas_ventas[-10:] if len(todas_ventas) > 10 else todas_ventas
         
         if not ventas:
             texto += "❌ No hay ventas registradas."
@@ -158,7 +159,7 @@ Ejemplo:
             for venta in ventas:
                 texto += f"""
 📌 <b>{venta.get('servicio', 'Desconocido')}</b>
-👤 Usuario: {venta.get('usuario', 'ID: '+venta.get('uid', '?'))}
+👤 Usuario: {venta.get('nombre', 'ID: '+venta.get('uid', '?'))}
 💰 Precio: {MONEDA} {venta.get('precio', 0)}
 📅 {venta.get('fecha', '')}
 ──────────────────────────
