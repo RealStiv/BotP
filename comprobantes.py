@@ -59,4 +59,4 @@ def ver_comprobantes_pendientes():
         texto += f"📅 {c['fecha']}\n"
         texto += "────────────────────\n"
     
-    return texto, compras
+    return texto, 
