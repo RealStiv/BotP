@@ -3,7 +3,6 @@
 # ==============================================
 # ✅ VERSIÓN MONGODB - COMPATIBLE CON RAILWAY
 # ==============================================
-
 from datetime import datetime
 from pymongo import MongoClient
 import certifi
@@ -11,10 +10,10 @@ import os
 from config import MONGO_URI, MONGO_DB_NAME
 
 # ==============================================
-# 🔌 CONEXIÓN SEGURA A MONGODB
+# 🔌 CONEXIÓN SEGURA OBLIGATORIA
 # ==============================================
 try:
-    # 🛡️ Configuración especial para evitar errores SSL
+    # 🛡️ ESTA ES LA LÍNEA CLAVE QUE ARREGLA EL ERROR SSL
     client = MongoClient(
         MONGO_URI,
         tls=True,
@@ -27,10 +26,11 @@ try:
     
     db = client[MONGO_DB_NAME]
     usuarios_col = db["usuarios"]
-    print("👥 Módulo Usuarios cargado correctamente")
-
+    print("✅ USERS: Conectado a MongoDB")
+    
 except Exception as e:
-    print(f"❌ Error en Users DB: {str(e)}")
+    print(f"❌ USERS: Error de conexión: {str(e)}")
+    # Si falla, definimos las variables vacías
     client = None
     db = None
     usuarios_col = None
@@ -39,21 +39,14 @@ except Exception as e:
 # ✅ VERIFICAR Y REGISTRAR USUARIO
 # ==============================================
 def verificar_o_crear_usuario(uid, nombre="Usuario"):
-    """
-    Verifica si el usuario existe en MongoDB.
-    Si NO existe: lo crea con datos iniciales.
-    Si SÍ existe: solo devuelve los datos.
-    """
     if usuarios_col is None:
-        return False # Sin conexión
+        print("⚠️ Sin conexión a base de datos")
+        return False
         
     uid = str(uid)
-    
-    # Buscar en la base de datos
     usuario = usuarios_col.find_one({"id": uid})
     
     if not usuario:
-        # 🆕 NUEVO USUARIO - Se registra una sola vez
         datos_nuevo = {
             "id": uid,
             "nombre": nombre,
@@ -64,27 +57,22 @@ def verificar_o_crear_usuario(uid, nombre="Usuario"):
             "estado": "activo"
         }
         usuarios_col.insert_one(datos_nuevo)
-        return True # Retorna True si es nuevo
-        
+        return True
     else:
-        # 🔄 USUARIO EXISTENTE - Solo actualizamos última visita
         usuarios_col.update_one(
             {"id": uid},
             {"$set": {"ultimo_acceso": datetime.now().strftime("%d/%m/%Y %H:%M")}}
         )
-        return False # Retorna False si ya existía
+        return False
 
 # ==============================================
 # 💰 GESTIÓN DE SALDO
 # ==============================================
 def actualizar_saldo(uid, cantidad, motivo="Operación"):
-    """Suma o resta saldo de forma segura en MongoDB"""
     if usuarios_col is None:
         return 0.00
         
     uid = str(uid)
-    
-    # Obtener saldo actual
     usuario = usuarios_col.find_one({"id": uid})
     if not usuario:
         return 0.00
@@ -92,7 +80,6 @@ def actualizar_saldo(uid, cantidad, motivo="Operación"):
     saldo_actual = usuario.get("saldo", 0.00)
     nuevo_saldo = round(saldo_actual + cantidad, 2)
     
-    # 🏆 Actualizar nivel automáticamente
     if nuevo_saldo >= 1000:
         nivel = "💎 VIP DIAMANTE"
     elif nuevo_saldo >= 500:
@@ -102,15 +89,10 @@ def actualizar_saldo(uid, cantidad, motivo="Operación"):
     else:
         nivel = "👤 Usuario Normal"
     
-    # Guardar en base de datos
     usuarios_col.update_one(
         {"id": uid},
-        {"$set": {
-            "saldo": nuevo_saldo,
-            "nivel": nivel
-        }}
+        {"$set": {"saldo": nuevo_saldo, "nivel": nivel}}
     )
-    
     return nuevo_saldo
 
 def obtener_saldo(uid):
@@ -127,9 +109,6 @@ def obtener_nivel(uid):
     usuario = usuarios_col.find_one({"id": uid})
     return usuario.get("nivel", "👤 Usuario Normal") if usuario else "👤 Usuario Normal"
 
-# ==============================================
-# 📋 OBTENER DATOS COMPLETOS
-# ==============================================
 def get_user_data(uid):
     if usuarios_col is None:
         return None
@@ -141,18 +120,11 @@ def listar_todos():
         return []
     return list(usuarios_col.find())
 
-# ==============================================
-# 🧹 LIMPIEZA Y MANTENIMIENTO
-# ==============================================
 def usuario_existe(uid):
     if usuarios_col is None:
         return False
     return usuarios_col.find_one({"id": str(uid)}) is not None
 
-# ==============================================
-# 🔄 FUNCIONES COMPATIBLES CON EL MAIN
-# ==============================================
-# Para que no tengas que cambiar nada en el código principal
 def verificar_usuario(uid, nombre):
     return verificar_o_crear_usuario(uid, nombre)
 
