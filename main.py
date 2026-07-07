@@ -15,8 +15,11 @@ from users import *
 # ==============================================
 # 🚀 INICIALIZACIÓN DEL BOT
 # ==============================================
-# ⚠️ IMPORTANTE: Esto debe ir PRIMERO que todo lo demás
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# 🔧 CONECTAR SISTEMA DE LOGS
+from logger import set_bot
+set_bot(bot)
 
 # Importar módulos después de definir el bot
 from admin import registrar_comandos_admin, handle_admin_callback
@@ -66,7 +69,7 @@ def cmd_start(msg):
 
 🎬 <b>Cuentas Premium</b> • Netflix, Disney+, HBO y más
 💳 <b>Tarjetas CC</b> • Full Data y verificadas
-📈 <b>SMM Panel</b> • Seguidores, Likes y Visitas
+📈 <b>SMM Panel</b> • Seguidores, Likes, Visitas
 💰 <b>Recargas</b> • Métodos rápidos y seguros
 
 🔒 <b>Garantía y Seguridad 100%</b>
@@ -135,12 +138,12 @@ def cmd_tienda(msg):
 🔹 <b>SECCIONES DISPONIBLES:</b>
 
 🎬 <b>SERVICIOS PREMIUM</b>
-• Netflix, Disney+, HBO, etc.
+• Netflix, Disney+, HBO y más
 • Cuentas privadas y garantizadas
 
 💳 <b>TARJETAS CC FULL DATA</b>
 • Visa, Mastercard, Amex
-• Datos completos y verificados
+• Datos completos y verificadas
 
 📈 <b>SMM PANEL</b>
 • Seguidores, Likes, Vistas
@@ -243,7 +246,7 @@ def handle_photo(msg):
     # Obtener el file_id de la foto
     file_id = msg.photo[-1].file_id
     
-    # Aquí deberías pedir monto y método, pero por ahora guardamos directo
+    # Guardar comprobante
     exito, respuesta = guardar_comprobante(uid, nombre, 0.00, "Telegram", file_id)
     bot.send_message(msg.chat.id, respuesta, parse_mode="HTML")
 
