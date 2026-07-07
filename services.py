@@ -6,7 +6,7 @@
 
 from config import *
 from logger import *
-from sellers import obtener_datos
+from sellers import obtener_datos, es_seller
 
 # ==============================================
 # 🗄️ BASE DE DATOS DE SERVICIOS
@@ -224,7 +224,7 @@ SERVICIOS = {
     },
 
     # ==============================================
-    # 📺 YOUTUBE - LIKES
+    # 📘 YOUTUBE - LIKES
     # ==============================================
     "yt_likes_server": {
         "nombre": "👍 Likes YouTube [New Server] ⚡",
@@ -495,20 +495,17 @@ def calcular_precio_total(servicio_id, cantidad, uid=None):
     costo_real = servicio['costo_real']
     
     # Si es Seller, calcular precio con descuento
+    precio_final = precio_base
+    ganancia = servicio['ganancia_base']
+    
     if uid:
-        from sellers import es_seller
         if es_seller(uid):
             datos_seller = obtener_datos(uid)
-            comision = datos_seller['info_nivel']['comision']
-            descuento = (precio_base * comision) / 100
-            precio_final = precio_base - descuento
-            ganancia = precio_base - precio_final
-        else:
-            precio_final = precio_base
-            ganancia = servicio['ganancia_base']
-    else:
-        precio_final = precio_base
-        ganancia = servicio['ganancia_base']
+            if datos_seller and "info_nivel" in datos_seller:
+                comision = datos_seller['info_nivel']['comision']
+                descuento = (precio_base * comision) / 100
+                precio_final = precio_base - descuento
+                ganancia = descuento  # La ganancia del seller es el descuento
     
     # Calcular totales
     total_cobrar = (precio_final / 1000) * cantidad
@@ -521,7 +518,16 @@ def calcular_precio_total(servicio_id, cantidad, uid=None):
 # 📋 LISTAR SERVICIOS
 # ==============================================
 def listar_servicios():
+    """Retorna todos los servicios disponibles"""
     return SERVICIOS
 
 def obtener_servicio(servicio_id):
+    """Obtiene un servicio específico"""
     return SERVICIOS.get(servicio_id, None)
+
+def buscar_por_api_id(api_id):
+    """Busca servicio por ID de API"""
+    for key, data in SERVICIOS.items():
+        if data.get('api_id') == api_id:
+            return key, data
+    return None, None
