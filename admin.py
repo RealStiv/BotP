@@ -1,301 +1,209 @@
 # ==============================================
-# 👑 PANEL DE ADMINISTRACIÓN MAESTRO
+# 🛡️ PANEL DE ADMINISTRACIÓN MASTER
 # ==============================================
-# SISTEMA COMPLETO CON BOTONES INTERACTIVOS
+# ✅ Control total del sistema
+# ✅ Compatible con todos los módulos
 # ==============================================
 
 import telebot
-import os
-import sys
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import *
-from logger import *
 from database import *
-from licencias import *
-from giveaway import *
-from keyboards import *
-from admin_premium import *
-from datetime import datetime
+from logger import *
+
+# Importar todos los módulos
+from admin_premium import panel_configuracion as panel_premium
+from comprobantes import ver_comprobantes_pendientes
+from configuracion import panel_configuracion, toggle_mantenimiento, actualizar_texto
+from cupones import listar_cupones_admin, crear_cupon
+from ranking import top_mejores_clientes, top_referidores
+from payment_manager import menu_gestion_pagos, editar_metodo, toggle_estado, actualizar_datos, actualizar_comision, agregar_nuevo, eliminar_metodo
+from soporte import ver_tickets_abiertos
+from stats import obtener_estadisticas_completas, obtener_ranking_usuarios, obtener_top_servicios, obtener_reporte_completo
+from tarjetas import menu_tienda, obtener_bases, obtener_stock_total
 
 # ==============================================
-# 🛡️ VARIABLES DEL SISTEMA
+# 🏠 MENÚ PRINCIPAL ADMIN
 # ==============================================
-MODO_MANTENIMIENTO = False
-ULTIMO_REINICIO = datetime.now()
-
-# ==============================================
-# 📋 MENÚ PRINCIPAL DE ADMIN
-# ==============================================
-def panel_admin(bot, msg):
-    uid = str(msg.from_user.id)
-    
-    if str(uid) != str(ADMIN_ID):
-        bot.send_message(msg.chat.id, "❌ Acceso denegado.", parse_mode="HTML")
+def menu_admin_principal(bot, msg):
+    uid = msg.from_user.id
+    if uid != ADMIN_ID:
+        bot.send_message(msg.chat.id, "❌ Acceso denegado.")
         return
     
-    estado = "✅ ACTIVO" if not MODO_MANTENIMIENTO else "🔧 MANTENIMIENTO"
-    total_usuarios = total_usuarios_db()
-    total_ventas = total_ventas_db()
-    ganancias = sumar_ganancias_totales()
+    texto = """
+⚔️ <b>PANEL DE ADMINISTRADOR</b> ⚔️
+
+🔧 <b>CONTROL TOTAL DEL SISTEMA</b>
+
+🔘 <b>Selecciona una sección:</b>
+"""
     
-    menu = """
-╔══════════════════════════════════╗
-║        ⚙️  PANEL MAESTRO    ║
-╚══════════════════════════════════╝
-
-👑 Bienvenido, Administrador
-
-📊 ESTADÍSTICAS:
-👥 Usuarios: <code>{}</code>
-🛒 Ventas totales: <code>{}</code>
-💰 Ganancias: <code>{} {}</code>
-
-⚙️ ESTADO: {}
-🕒 Último reinicio: <code>{}</code>
-
-🔘 <b>Selecciona una opción:</b>
-""".format(
-    total_usuarios, total_ventas, MONEDA, ganancias,
-    estado, ULTIMO_REINICIO.strftime("%d/%m %H:%M")
-)
-
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    markup = InlineKeyboardMarkup(row_width=2)
+    b1 = InlineKeyboardButton("📊 DASHBOARD", callback_data="admin_dashboard")
+    b2 = InlineKeyboardButton("💳 GESTIONAR PAGOS", callback_data="manage_payments")
+    b3 = InlineKeyboardButton("📸 COMPROBANTES", callback_data="ver_comprobantes")
+    b4 = InlineKeyboardButton("🎫 SOPORTE", callback_data="ver_tickets")
+    b5 = InlineKeyboardButton("🏆 RANKINGS", callback_data="ver_rankings")
+    b6 = InlineKeyboardButton("⚙️ CONFIGURACIÓN", callback_data="config_global")
+    b7 = InlineKeyboardButton("🎬 SERVICIOS PREMIUM", callback_data="panel_premium")
+    b8 = InlineKeyboardButton("💳 TARJETAS CC", callback_data="gestionar_tarjetas")
     
-    b1 = telebot.types.InlineKeyboardButton("📊 Estadísticas", callback_data="admin_stats")
-    b2 = telebot.types.InlineKeyboardButton("👤 Usuarios", callback_data="admin_users_menu")
-    b3 = telebot.types.InlineKeyboardButton("🤝 Sellers", callback_data="admin_sellers_menu")
-    b4 = telebot.types.InlineKeyboardButton("🎬 Premium", callback_data="admin_premium_menu")
-    b5 = telebot.types.InlineKeyboardButton("🔑 Licencias", callback_data="admin_licencias_menu")
-    b6 = telebot.types.InlineKeyboardButton("🎁 Giveaways", callback_data="admin_giveaways_menu")
-    b7 = telebot.types.InlineKeyboardButton("📦 Servicios", callback_data="admin_servicios")
-    b8 = telebot.types.InlineKeyboardButton("📝 Registros", callback_data="admin_logs")
-    b9 = telebot.types.InlineKeyboardButton("🔧 Mantenimiento", callback_data="admin_mantenimiento")
-    b10 = telebot.types.InlineKeyboardButton("🔄 Reiniciar", callback_data="admin_reiniciar")
-    b11 = telebot.types.InlineKeyboardButton("⛔ Cerrar", callback_data="admin_cerrar")
-    b12 = telebot.types.InlineKeyboardButton("🔙 Volver", callback_data="volver_menu")
+    markup.add(b1, b2, b3, b4, b5, b6, b7, b8)
     
-    markup.add(b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12)
-    bot.send_message(msg.chat.id, menu, reply_markup=markup, parse_mode="HTML")
+    bot.send_message(msg.chat.id, texto, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# 🎛️ PROCESAR OPCIONES DE ADMIN
+# 📊 DASHBOARD
 # ==============================================
-def procesar_admin(bot, call):
+def mostrar_dashboard(bot, call):
+    datos = obtener_estadisticas_completas()
+    markup = InlineKeyboardMarkup()
+    btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
+    markup.add(btn_back)
+    bot.edit_message_text(datos, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# 🎫 SOPORTE
+# ==============================================
+def mostrar_tickets(bot, call):
+    texto = ver_tickets_abiertos()
+    markup = InlineKeyboardMarkup()
+    btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
+    markup.add(btn_back)
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# 🏆 RANKINGS
+# ==============================================
+def mostrar_rankings(bot, call):
+    texto = top_mejores_clientes() + "\n\n" + top_referidores()
+    markup = InlineKeyboardMarkup()
+    btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
+    markup.add(btn_back)
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# 💳 GESTIÓN DE PAGOS
+# ==============================================
+def mostrar_gestion_pagos(bot, call):
+    texto, markup = menu_gestion_pagos()
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# 📸 COMPROBANTES
+# ==============================================
+def mostrar_comprobantes(bot, call):
+    texto, compras = ver_comprobantes_pendientes()
+    markup = InlineKeyboardMarkup()
+    btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
+    markup.add(btn_back)
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# ⚙️ CONFIGURACIÓN GLOBAL
+# ==============================================
+def mostrar_configuracion(bot, call):
+    from configuracion import panel_configuracion
+    # Esta función usa send_message directamente
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    panel_configuracion(bot, call.message)
+
+# ==============================================
+# 🎬 PANEL PREMIUM
+# ==============================================
+def mostrar_panel_premium(bot, call):
+    from admin_premium import panel_configuracion
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+    panel_configuracion(bot, call.message)
+
+# ==============================================
+# 💳 GESTIÓN DE TARJETAS
+# ==============================================
+def mostrar_gestion_tarjetas(bot, call):
+    texto = menu_tienda()
+    bases = obtener_bases()
+    markup = InlineKeyboardMarkup(row_width=2)
+    
+    for key, db_info in bases.items():
+        btn = InlineKeyboardButton(f"{db_info['nombre']} ({len(db_info['tarjetas'])})", callback_data=f"vender_cc_{key}")
+        markup.add(btn)
+    
+    btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
+    markup.add(btn_back)
+    
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# 🎛️ MANEJADOR DE CALLBACKS
+# ==============================================
+def handle_admin_callback(bot, call):
     data = call.data
-    uid = str(call.from_user.id)
     
-    if str(uid) != str(ADMIN_ID):
-        bot.answer_callback_query(call.id, "❌ No permitido", show_alert=True)
-        return
-
-    # 📊 ESTADÍSTICAS
-    if data == "admin_stats":
-        total_u = total_usuarios_db()
-        u_hoy = contar_usuarios_hoy()
-        total_v = total_ventas_db()
-        sum_v = sumar_ventas_totales()
-        gan = sumar_ganancias_totales()
-        
-        texto = f"""
-📊 <b>ESTADÍSTICAS GENERALES</b>
-
-👥 Total usuarios: <code>{total_u}</code>
-🆕 Nuevos hoy: <code>{u_hoy}</code>
-🛒 Órdenes totales: <code>{total_v}</code>
-💸 Ventas: <code>{MONEDA} {sum_v}</code>
-💰 Ganancia: <code>{MONEDA} {gan}</code>
-
-📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
-"""
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=menu_volver_admin(), parse_mode="HTML")
-
-    # 👤 MENU USUARIOS
-    elif data == "admin_users_menu":
-        texto = """
-👤 <b>GESTIÓN DE USUARIOS</b>
-
-Selecciona una acción:
-"""
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("➕ Agregar Saldo", callback_data="cmd_addsaldo"),
-            telebot.types.InlineKeyboardButton("➖ Restar Saldo", callback_data="cmd_restarsaldo"),
-            telebot.types.InlineKeyboardButton("🔒 Banear Usuario", callback_data="cmd_ban"),
-            telebot.types.InlineKeyboardButton("🔓 Desbanear", callback_data="cmd_unban"),
-            telebot.types.InlineKeyboardButton("ℹ️ Info Usuario", callback_data="cmd_info"),
-            telebot.types.InlineKeyboardButton("🔙 Volver", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # 🤝 MENU SELLERS
-    elif data == "admin_sellers_menu":
-        from sellers import obtener_estadisticas_sellers
-        stats = obtener_estadisticas_sellers()
-        
-        texto = f"""
-🤝 <b>PANEL DE VENDEDORES</b>
-
-📊 Stats:
-• Total: <code>{stats['total']}</code>
-• Activos: <code>{stats['activos']}</code>
-• Ventas: <code>{stats['ventas']}</code>
-"""
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("🆕 Crear Seller", callback_data="cmd_crearseller"),
-            telebot.types.InlineKeyboardButton("📋 Ver Todos", callback_data="cmd_versellers"),
-            telebot.types.InlineKeyboardButton("ℹ️ Info Seller", callback_data="cmd_infoseller"),
-            telebot.types.InlineKeyboardButton("🔙 Volver", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # 🔑 MENU LICENCIAS
-    elif data == "admin_licencias_menu":
-        texto = """
-🔑 <b>GESTIÓN DE LICENCIAS</b>
-
-Selecciona una opción:
-"""
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("🆕 Crear Licencia", callback_data="cmd_crearlicencia"),
-            telebot.types.InlineKeyboardButton("📋 Ver Licencias", callback_data="cmd_verlicencias"),
-            telebot.types.InlineKeyboardButton("🔍 Info Key", callback_data="cmd_infokey"),
-            telebot.types.InlineKeyboardButton("📊 Estadísticas", callback_data="cmd_statslicencias"),
-            telebot.types.InlineKeyboardButton("🔙 Volver", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # 🎁 MENU GIVEAWAYS
-    elif data == "admin_giveaways_menu":
-        texto = """
-🎁 <b>GESTIÓN DE GIVEAWAYS</b>
-
-Acciones disponibles:
-"""
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("🆕 Crear Giveaway", callback_data="cmd_creargiveaway"),
-            telebot.types.InlineKeyboardButton("📋 Ver Activos", callback_data="cmd_vergiveaways"),
-            telebot.types.InlineKeyboardButton("✅ Finalizar", callback_data="cmd_finalizargiveaway"),
-            telebot.types.InlineKeyboardButton("🔙 Volver", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # 🎬 PANEL PREMIUM
-    elif data == "admin_premium_menu":
-        panel_admin_premium(bot, call.message)
-
-    # 📦 SERVICIOS
-    elif data == "admin_servicios":
-        from services import SERVICIOS
-        texto = f"""
-📦 <b>GESTIÓN DE SERVICIOS SMM</b>
-
-Total: <code>{len(SERVICIOS)}</code> servicios
-"""
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("➕ Agregar", callback_data="cmd_addservicio"),
-            telebot.types.InlineKeyboardButton("✏️ Editar", callback_data="cmd_editservicio"),
-            telebot.types.InlineKeyboardButton("🗑️ Eliminar", callback_data="cmd_delservicio"),
-            telebot.types.InlineKeyboardButton("🔙 Volver", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # 📝 REGISTROS
-    elif data == "admin_logs":
-        logs = obtener_ultimos_registros()
-        texto = "📝 <b>ÚLTIMOS MOVIMIENTOS</b>\n\n" + logs
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=menu_volver_admin(), parse_mode="HTML")
-
-    # 🔧 MANTENIMIENTO
-    elif data == "admin_mantenimiento":
-        global MODO_MANTENIMIENTO
-        MODO_MANTENIMIENTO = not MODO_MANTENIMIENTO
-        
-        if MODO_MANTENIMIENTO:
-            texto = "🔧 <b>MODO MANTENIMIENTO ACTIVADO</b>\n✅ Sistema en mantenimiento."
-        else:
-            texto = "✅ <b>MODO MANTENIMIENTO DESACTIVADO</b>\n✅ Sistema activo."
-        
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=menu_volver_admin(), parse_mode="HTML")
-
-    # 🔄 REINICIAR
-    elif data == "admin_reiniciar":
-        texto = "🔄 <b>¿Seguro que quieres reiniciar el bot?</b>"
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("✅ SÍ, REINICIAR", callback_data="confirmar_reinicio"),
-            telebot.types.InlineKeyboardButton("❌ NO", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # ⛔ CERRAR
-    elif data == "admin_cerrar":
-        texto = "⛔ <b>¿Seguro que quieres APAGAR el bot?</b>"
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            telebot.types.InlineKeyboardButton("✅ SÍ, CERRAR", callback_data="confirmar_cerrar"),
-            telebot.types.InlineKeyboardButton("❌ NO", callback_data="volver_admin")
-        )
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
-                              reply_markup=markup, parse_mode="HTML")
-
-    # ✅ CONFIRMAR REINICIO
-    elif data == "confirmar_reinicio":
-        bot.send_message(call.message.chat.id, "🔄 Reiniciando...", parse_mode="HTML")
-        global ULTIMO_REINICIO
-        ULTIMO_REINICIO = datetime.now()
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
-
-    # ✅ CONFIRMAR CERRAR
-    elif data == "confirmar_cerrar":
-        bot.send_message(call.message.chat.id, "⛔ Cerrando bot... Hasta luego!", parse_mode="HTML")
-        os._exit(0)
-
-    # 🔙 VOLVER
-    elif data == "volver_admin":
+    if data == "admin_menu":
         bot.delete_message(call.message.chat.id, call.message.message_id)
-        panel_admin(bot, call.message)
+        menu_admin_principal(bot, call.message)
+    
+    elif data == "admin_dashboard":
+        mostrar_dashboard(bot, call)
+    
+    elif data == "manage_payments":
+        mostrar_gestion_pagos(bot, call)
+    
+    elif data == "ver_comprobantes":
+        mostrar_comprobantes(bot, call)
+    
+    elif data == "ver_tickets":
+        mostrar_tickets(bot, call)
+    
+    elif data == "ver_rankings":
+        mostrar_rankings(bot, call)
+    
+    elif data == "config_global":
+        mostrar_configuracion(bot, call)
+    
+    elif data == "panel_premium":
+        mostrar_panel_premium(bot, call)
+    
+    elif data == "gestionar_tarjetas":
+        mostrar_gestion_tarjetas(bot, call)
+    
+    # Manejar pagos
+    elif data.startswith("edit_pay_"):
+        key = data.replace("edit_pay_", "")
+        texto, markup = editar_metodo(key)
+        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+    
+    elif data.startswith("toggle_"):
+        key = data.replace("toggle_", "")
+        resultado = toggle_estado(key, call.from_user.id)
+        bot.answer_callback_query(call.id, resultado, show_alert=True)
+        # Volver a mostrar la lista
+        texto, markup = menu_gestion_pagos()
+        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# 🎛️ MENÚS AUXILIARES CON BOTONES
+# 📝 COMANDOS DE ADMIN
 # ==============================================
-def menu_volver_admin():
-    markup = telebot.types.InlineKeyboardMarkup()
-    markup.add(telebot.types.InlineKeyboardButton("🔙 Volver al Panel", callback_data="volver_admin"))
-    return markup
-
-def esta_en_mantenimiento():
-    return MODO_MANTENIMIENTO
-
-# ==============================================
-# 📊 FUNCIONES DE CÁLCULO
-# ==============================================
-def contar_ventas_hoy():
-    hoy = datetime.now().strftime("%d/%m/%Y")
-    ventas = obtener_historial_premium()
-    return len([x for x in ventas if x.get("fecha", "") == hoy])
-
-def sumar_ventas_totales():
-    ventas = obtener_historial_premium()
-    return sum([x.get("monto", 0) for x in ventas])
-
-def sumar_ganancias_totales():
-    ventas = obtener_historial_premium()
-    return sum([x.get("ganancia", 0) for x in ventas])
-
-def contar_usuarios_hoy():
-    hoy = datetime.now().strftime("%d/%m/%Y")
-    usuarios = obtener_todos_usuarios_db()
-    return len([u for u in usuarios if u.get("registro", "").startswith(hoy)])
+def registrar_comandos_admin(bot):
+    # Comando /admin
+    @bot.message_handler(commands=['admin'])
+    def cmd_admin(msg):
+        menu_admin_principal(bot, msg)
+    
+    # Comando /responder
+    @bot.message_handler(commands=['responder'])
+    def cmd_responder(msg):
+        if msg.from_user.id != ADMIN_ID:
+            return
+        
+        try:
+            partes = msg.text.split(" ", 2)
+            uid = partes[1]
+            respuesta = partes[2]
+            
+            bot.send_message(uid, f"📩 <b>RESPUESTA DEL ADMINISTRADOR</b>\n\n{respuesta}", parse_mode="HTML")
+            bot.send_message(msg.chat.id, "✅ Mensaje enviado correctamente.")
+            log_info(f"SOPORTE: Respuesta enviada a {uid}")
+        except:
+            bot.send_message(msg.chat.id, "❌ Uso correcto: /responder [ID] [texto]")
