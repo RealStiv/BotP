@@ -1,94 +1,127 @@
 # ==============================================
-# 🔐 SISTEMA DE GESTIÓN DE USUARIOS
+# 🍃 CONEXIÓN A MONGODB - VERSIÓN CORREGIDA
 # ==============================================
+import pymongo
+from pymongo import MongoClient
 from datetime import datetime
+from config import MONGO_URI, MONGO_DB_NAME
 
-# 🗄️ BASE DE DATOS DE USUARIOS (Solo se crea UNO por ID)
-usuarios = {}
+# ==============================================
+# 🔌 CONECTAR A MONGODB
+# ==============================================
+try:
+    # 🛡️ Configuración especial para Railway y SSL
+    client = MongoClient(
+        MONGO_URI,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        tlsAllowInvalidHostnames=True,
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=30000
+    )
+    
+    db = client[MONGO_DB_NAME]
+    
+    # 📂 COLECCIONES
+    usuarios_col = db["usuarios"]
+    ventas_col = db["ventas"]
+    licencias_col = db["licencias"]
+    sorteos_col = db["sorteos"]
+    
+    print("✅ CONECTADO A MONGODB CORRECTAMENTE")
+    
+except Exception as e:
+    print(f"❌ ERROR DE CONEXIÓN MONGO: {str(e)}")
+    exit()
 
 # ==============================================
 # ✅ VERIFICAR Y REGISTRAR USUARIO
 # ==============================================
-def verificar_o_crear_usuario(uid, nombre="Usuario"):
-    """
-    Verifica si el usuario existe.
-    Si NO existe: lo crea con datos iniciales.
-    Si SÍ existe: solo devuelve los datos.
-    ¡NUNCA DUPLICA!
-    """
-    uid = str(uid) # Convertimos a string para seguridad
+def verificar_usuario(uid, nombre="Usuario"):
+    """Verifica si existe, si no, lo crea"""
+    uid = str(uid)
     
-    if uid not in usuarios:
-        # 🆕 NUEVO USUARIO - Se registra una sola vez
-        usuarios[uid] = {
-            "nombre": nombre,
+    usuario = usuarios_col.find_one({"id": uid})
+    
+    if not usuario:
+        nuevo_usuario = {
             "id": uid,
+            "nombre": nombre,
             "saldo": 0.00,
             "nivel": "👤 Usuario Normal",
             "registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "ultimo_acceso": datetime.now().strftime("%d/%m/%Y %H:%M")
+            "ultimo_acceso": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "estado": "activo",
+            "es_seller": False,
+            "comision": 0
         }
-        print(f"✅ Nuevo usuario registrado: {nombre} (ID: {uid})")
-        return True # Retorna True si es nuevo
-        
+        usuarios_col.insert_one(nuevo_usuario)
+        print(f"✅ Nuevo usuario: {nombre}")
+        return True # Es nuevo
     else:
-        # 🔄 USUARIO EXISTENTE - Solo actualizamos última visita
-        usuarios[uid]["ultimo_acceso"] = datetime.now().strftime("%d/%m/%Y %H:%M")
-        return False # Retorna False si ya existía
+        # Actualizar última visita
+        usuarios_col.update_one(
+            {"id": uid},
+            {"$set": {"ultimo_acceso": datetime.now().strftime("%d/%m/%Y %H:%M")}}
+        )
+        return False # Ya existía
 
 # ==============================================
 # 💰 GESTIÓN DE SALDO
 # ==============================================
 def actualizar_saldo(uid, cantidad, motivo="Operación"):
-    """Suma o resta saldo de forma segura"""
     uid = str(uid)
+    usuario = usuarios_col.find_one({"id": uid})
     
-    if uid not in usuarios:
-        return 0 # Error si no existe
+    if not usuario:
+        return 0
         
-    usuarios[uid]["saldo"] += cantidad
-    usuarios[uid]["saldo"] = round(usuarios[uid]["saldo"], 2) # Redondear a 2 decimales
+    nuevo_saldo = usuario["saldo"] + cantidad
+    nuevo_saldo = round(nuevo_saldo, 2)
     
-    # 🏆 Actualizar nivel automáticamente
-    saldo_actual = usuarios[uid]["saldo"]
-    if saldo_actual >= 1000:
-        usuarios[uid]["nivel"] = "💎 VIP DIAMANTE"
-    elif saldo_actual >= 500:
-        usuarios[uid]["nivel"] = "🥇 VIP ORO"
-    elif saldo_actual >= 100:
-        usuarios[uid]["nivel"] = "🥈 VIP PLATA"
+    # Actualizar saldo
+    usuarios_col.update_one(
+        {"id": uid},
+        {"$set": {"saldo": nuevo_saldo}}
+    )
+    
+    # Actualizar nivel automáticamente
+    if nuevo_saldo >= 1000:
+        nivel = "💎 VIP DIAMANTE"
+    elif nuevo_saldo >= 500:
+        nivel = "🥇 VIP ORO"
+    elif nuevo_saldo >= 100:
+        nivel = "🥈 VIP PLATA"
     else:
-        usuarios[uid]["nivel"] = "👤 Usuario Normal"
+        nivel = "👤 Usuario Normal"
         
-    return usuarios[uid]["saldo"]
+    usuarios_col.update_one(
+        {"id": uid},
+        {"$set": {"nivel": nivel}}
+    )
+    
+    return nuevo_saldo
 
 def obtener_saldo(uid):
     uid = str(uid)
-    return usuarios.get(uid, {}).get("saldo", 0.00)
+    usuario = usuarios_col.find_one({"id": uid})
+    return usuario.get("saldo", 0.00) if usuario else 0.00
 
 def obtener_nivel(uid):
     uid = str(uid)
-    return usuarios.get(uid, {}).get("nivel", "👤 Usuario Normal")
+    usuario = usuarios_col.find_one({"id": uid})
+    return usuario.get("nivel", "👤 Usuario Normal") if usuario else "👤 Usuario Normal"
 
 # ==============================================
-# 📋 OBTENER DATOS COMPLETOS
+# 📋 OBTENER DATOS
 # ==============================================
-def get_user_data(uid):
+def obtener_datos(uid):
     uid = str(uid)
-    return usuarios.get(uid, None)
-
-def listar_todos():
-    return usuarios
+    return usuarios_col.find_one({"id": uid})
 
 # ==============================================
-# 🧹 LIMPIEZA Y MANTENIMIENTO
+# 📊 ESTADÍSTICAS
 # ==============================================
-def usuario_existe(uid):
-    return str(uid) in usuarios
-    # ==============================================
-# 📊 FUNCIONES ADICIONALES PARA ESTADÍSTICAS
-# ==============================================
-
 def total_usuarios_db():
     return usuarios_col.count_documents({})
 
@@ -100,4 +133,3 @@ def obtener_historial_premium():
 
 def total_ventas_db():
     return ventas_col.count_documents({})
-
