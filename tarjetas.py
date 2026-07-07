@@ -8,9 +8,9 @@ from database import *
 from logger import *
 
 # ==============================================
-# 💲 PRECIOS DEFINIDOS AQUÍ MISMO
+# 💲 DEFINICIÓN DE PRECIOS
 # ==============================================
-# ⚠️ Esto evita cualquier error de importación
+# ⚠️ ESTO DEBE IR PRIMERO QUE TODO
 PRECIO_VISA = 15.00
 PRECIO_MASTERCARD = 12.00
 PRECIO_AMEX = 20.00
