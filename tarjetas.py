@@ -5,7 +5,7 @@
 # ✅ Detecta cualquier formato
 # ✅ BINs verificados con API
 # ==============================================
-
+from config import *
 import requests
 import os
 from datetime import datetime
