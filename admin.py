@@ -6,15 +6,13 @@
 # ==============================================
 
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ForceReply
 from config import *
 from database import *
 from logger import *
 
 # Importar todos los módulos
-from admin_premium import panel_configuracion as panel_premium
 from comprobantes import ver_comprobantes_pendientes
-from configuracion import panel_configuracion, toggle_mantenimiento, actualizar_texto
 from cupones import listar_cupones_admin, crear_cupon
 from ranking import top_mejores_clientes, top_referidores
 from payment_manager import menu_gestion_pagos, editar_metodo, toggle_estado, actualizar_datos, actualizar_comision, agregar_nuevo, eliminar_metodo
@@ -45,11 +43,13 @@ def menu_admin_principal(bot, msg):
     b3 = InlineKeyboardButton("📸 COMPROBANTES", callback_data="ver_comprobantes")
     b4 = InlineKeyboardButton("🎫 SOPORTE", callback_data="ver_tickets")
     b5 = InlineKeyboardButton("🏆 RANKINGS", callback_data="ver_rankings")
-    b6 = InlineKeyboardButton("⚙️ CONFIGURACIÓN", callback_data="config_global")
-    b7 = InlineKeyboardButton("🎬 SERVICIOS PREMIUM", callback_data="panel_premium")
     b8 = InlineKeyboardButton("💳 TARJETAS CC", callback_data="gestionar_tarjetas")
+    b9 = InlineKeyboardButton("💲 PRECIOS CC", callback_data="precios_cc")
     
-    markup.add(b1, b2, b3, b4, b5, b6, b7, b8)
+    markup.add(b1, b2)
+    markup.add(b3, b4)
+    markup.add(b5, b8)
+    markup.add(b9)
     
     bot.send_message(msg.chat.id, texto, reply_markup=markup, parse_mode="HTML")
 
@@ -101,23 +101,6 @@ def mostrar_comprobantes(bot, call):
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# ⚙️ CONFIGURACIÓN GLOBAL
-# ==============================================
-def mostrar_configuracion(bot, call):
-    from configuracion import panel_configuracion
-    # Esta función usa send_message directamente
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-    panel_configuracion(bot, call.message)
-
-# ==============================================
-# 🎬 PANEL PREMIUM
-# ==============================================
-def mostrar_panel_premium(bot, call):
-    from admin_premium import panel_configuracion
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-    panel_configuracion(bot, call.message)
-
-# ==============================================
 # 💳 GESTIÓN DE TARJETAS
 # ==============================================
 def mostrar_gestion_tarjetas(bot, call):
@@ -134,79 +117,6 @@ def mostrar_gestion_tarjetas(bot, call):
     
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
-# ==============================================
-# 🎛️ MANEJADOR DE CALLBACKS
-# ==============================================
-def handle_admin_callback(bot, call):
-    data = call.data
-    
-    if data == "admin_menu":
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-        menu_admin_principal(bot, call.message)
-    
-    elif data == "admin_dashboard":
-        mostrar_dashboard(bot, call)
-    
-    elif data == "manage_payments":
-        mostrar_gestion_pagos(bot, call)
-    
-    elif data == "ver_comprobantes":
-        mostrar_comprobantes(bot, call)
-    
-    elif data == "ver_tickets":
-        mostrar_tickets(bot, call)
-    
-    elif data == "ver_rankings":
-        mostrar_rankings(bot, call)
-    
-    elif data == "config_global":
-        mostrar_configuracion(bot, call)
-    
-    elif data == "panel_premium":
-        mostrar_panel_premium(bot, call)
-    
-    elif data == "gestionar_tarjetas":
-        mostrar_gestion_tarjetas(bot, call)
-    
-    # Manejar pagos
-    elif data.startswith("edit_pay_"):
-        key = data.replace("edit_pay_", "")
-        texto, markup = editar_metodo(key)
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
-    
-    elif data.startswith("toggle_"):
-        key = data.replace("toggle_", "")
-        resultado = toggle_estado(key, call.from_user.id)
-        bot.answer_callback_query(call.id, resultado, show_alert=True)
-        # Volver a mostrar la lista
-        texto, markup = menu_gestion_pagos()
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
-
-# ==============================================
-# 📝 COMANDOS DE ADMIN
-# ==============================================
-def registrar_comandos_admin(bot):
-    # Comando /admin
-    @bot.message_handler(commands=['admin'])
-    def cmd_admin(msg):
-        menu_admin_principal(bot, msg)
-    
-    # Comando /responder
-    @bot.message_handler(commands=['responder'])
-    def cmd_responder(msg):
-        if msg.from_user.id != ADMIN_ID:
-            return
-        
-        try:
-            partes = msg.text.split(" ", 2)
-            uid = partes[1]
-            respuesta = partes[2]
-            
-            bot.send_message(uid, f"📩 <b>RESPUESTA DEL ADMINISTRADOR</b>\n\n{respuesta}", parse_mode="HTML")
-            bot.send_message(msg.chat.id, "✅ Mensaje enviado correctamente.")
-            log_info(f"SOPORTE: Respuesta enviada a {uid}")
-        except:
-            bot.send_message(msg.chat.id, "❌ Uso correcto: /responder [ID] [texto]")
 # ==============================================
 # 💲 EDITOR DE PRECIOS DE TARJETAS
 # ==============================================
@@ -243,19 +153,87 @@ def guardar_nuevo_precio(msg, tipo, nombre_tipo):
     try:
         nuevo_precio = float(msg.text.replace(",", "."))
         
-        # Actualizar en el diccionario
         from config import PRECIOS_CC
         PRECIOS_CC[tipo]['valor'] = nuevo_precio
-        
-        # También actualizar las variables individuales
-        globals()[f"PRECIO_{tipo.upper()}"] = nuevo_precio
         
         bot.send_message(msg.chat.id, f"✅ <b>PRECIO ACTUALIZADO!</b>\n\n{nombre_tipo}\nNuevo precio: {MONEDA} {nuevo_precio:.2f}", parse_mode="HTML")
         
         log_info(f"ADMIN: Cambió precio de {tipo} a {nuevo_precio}")
         
-        # Volver al menú
         menu_precios_cc(bot, msg)
         
     except:
         bot.send_message(msg.chat.id, "❌ Valor inválido. Escribe solo números.")
+
+# ==============================================
+# 🎛️ MANEJADOR DE CALLBACKS
+# ==============================================
+def handle_admin_callback(bot, call):
+    data = call.data
+    
+    if data == "admin_menu":
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        menu_admin_principal(bot, call)
+    
+    elif data == "admin_dashboard":
+        mostrar_dashboard(bot, call)
+    
+    elif data == "manage_payments":
+        mostrar_gestion_pagos(bot, call)
+    
+    elif data == "ver_comprobantes":
+        mostrar_comprobantes(bot, call)
+    
+    elif data == "ver_tickets":
+        mostrar_tickets(bot, call)
+    
+    elif data == "ver_rankings":
+        mostrar_rankings(bot, call)
+    
+    elif data == "gestionar_tarjetas":
+        mostrar_gestion_tarjetas(bot, call)
+        
+    elif data == "precios_cc":
+        menu_precios_cc(bot, call)
+
+    elif data.startswith("cambiar_precio_"):
+        solicitar_nuevo_precio(bot, call)
+    
+    # Manejar pagos
+    elif data.startswith("edit_pay_"):
+        key = data.replace("edit_pay_", "")
+        texto, markup = editar_metodo(key)
+        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+    
+    elif data.startswith("toggle_"):
+        key = data.replace("toggle_", "")
+        resultado = toggle_estado(key, call.from_user.id)
+        bot.answer_callback_query(call.id, resultado, show_alert=True)
+        texto, markup = menu_gestion_pagos()
+        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+# ==============================================
+# 📝 COMANDOS DE ADMIN
+# ==============================================
+def registrar_comandos_admin(bot):
+    # Comando /admin
+    @bot.message_handler(commands=['admin'])
+    def cmd_admin(msg):
+        menu_admin_principal(bot, msg)
+    
+    # Comando /responder
+    @bot.message_handler(commands=['responder'])
+    def cmd_responder(msg):
+        if msg.from_user.id != ADMIN_ID:
+            return
+        
+        try:
+            partes = msg.text.split(" ", 2)
+            uid = partes[1]
+            respuesta = partes[2]
+            
+            bot.send_message(uid, f"📩 <b>RESPUESTA DEL ADMINISTRADOR</b>\n\n{respuesta}", parse_mode="HTML")
+            bot.send_message(msg.chat.id, "✅ Mensaje enviado correctamente.")
+            log_info(f"SOPORTE: Respuesta enviada a {uid}")
+        except:
+            bot.send_message(msg.chat.id, "❌ Uso correcto: /responder [ID] [texto]")
