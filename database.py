@@ -24,6 +24,44 @@ try:
         tlsAllowInvalidHostnames=True,
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=30000,
+        # ==============================================
+# 📊 FUNCIONES DE ESTADÍSTICAS
+# ==============================================
+
+def total_usuarios_db():
+    """Cuenta el total de usuarios registrados"""
+    if usuarios is None:
+        return 0
+    return usuarios.count_documents({})
+
+def total_ventas_db():
+    """Cuenta el total de ventas/órdenes"""
+    if ventas is None:
+        return 0
+    return ventas.count_documents({})
+
+def sumar_ganancias_totales():
+    """Suma todas las ganancias"""
+    if ventas is None:
+        return 0
+    pipeline = [
+        {"$group": {"_id": None, "total": {"$sum": "$ganancia"}}}
+    ]
+    result = list(ventas.aggregate(pipeline))
+    return result[0]['total'] if result else 0
+
+def obtener_todos_usuarios_db():
+    """Devuelve lista con todos los usuarios"""
+    if usuarios is None:
+        return []
+    return list(usuarios.find())
+
+def obtener_historial_premium():
+    """Devuelve el historial de ventas premium"""
+    if ventas is None:
+        return []
+    return list(ventas.find().sort("_id", -1))
+
         maxPoolSize=50
     )
 
