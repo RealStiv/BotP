@@ -8,7 +8,6 @@ from config import *
 from logger import *
 from services import SERVICIOS
 from datetime import datetime
-import random
 
 # ==============================================
 # 📊 DASHBOARD PRINCIPAL
@@ -16,11 +15,11 @@ import random
 def obtener_estadisticas_completas():
     """Función principal que devuelve el dashboard completo"""
     # Obtener datos desde MongoDB
-    from database import total_usuarios_db, saldo_total_db
+    from database import total_usuarios_db, sumar_ganancias_totales
     
     # Datos básicos
     total_usuarios = total_usuarios_db()
-    saldo_total = saldo_total_db()
+    ganancias_totales = sumar_ganancias_totales()
     total_servicios = len(SERVICIOS)
     
     # Fecha y hora actual
@@ -41,7 +40,7 @@ def obtener_estadisticas_completas():
 • Usuarios Registrados: <b>{total_usuarios}</b>
 
 💰 <b>ECONOMÍA DEL SISTEMA</b>
-• Capital en Circulación: <b>{MONEDA} {saldo_total:.2f}</b>
+• Ganancias Totales: <b>{MONEDA} {ganancias_totales:.2f}</b>
 
 🛒 <b>SERVICIOS</b>
 • Productos Activos: <b>{total_servicios}</b>
@@ -56,17 +55,21 @@ def obtener_estadisticas_completas():
 # ==============================================
 def obtener_ranking_usuarios():
     """Obtiene ranking desde la base de datos"""
-    from database import obtener_top_clientes_db
+    from database import obtener_todos_usuarios_db
     
-    top_usuarios = obtener_top_clientes_db()
+    usuarios = obtener_todos_usuarios_db()
     
-    if not top_usuarios:
+    if not usuarios:
         return "❌ No hay datos aún."
-        
+    
+    # Ordenar por saldo (o lo que quieras usar para ranking)
+    usuarios_ordenados = sorted(usuarios, key=lambda x: x.get('saldo', 0), reverse=True)
+    
     texto = "🏆 <b>TOP 5 - MEJORES CLIENTES</b>\n\n"
     
-    for i, datos in enumerate(top_usuarios[:5], 1):
-        emoji = ["🥇","🥈","🥉","💳","💰"][i-1]
+    emojis = ["🥇","🥈","🥉","💳","💰"]
+    for i, datos in enumerate(usuarios_ordenados[:5], 1):
+        emoji = emojis[i-1] if i <=5 else "🔹"
         nombre = datos.get('nombre', f'ID: {datos["id"]}')
         saldo = datos.get('saldo', 0)
         texto += f"{emoji} <b>#{i}</b> - {nombre}\n   💵 Saldo: {MONEDA} {saldo:.2f}\n   🆔 <code>{datos['id']}</code>\n\n"
@@ -96,11 +99,16 @@ def obtener_top_servicios():
             servicio_mas_caro = (data['nombre'], precio)
             
         # Contar por categoría
-        if "TikTok" in data['nombre']: categorias["🎵 TikTok"] +=1
-        elif "Instagram" in data['nombre']: categorias["📸 Instagram"] +=1
-        elif "Telegram" in data['nombre']: categorias["✈️ Telegram"] +=1
-        elif "Facebook" in data['nombre']: categorias["📘 Facebook"] +=1
-        elif "YouTube" in data['nombre']: categorias["📺 YouTube"] +=1
+        if "TikTok" in data['nombre']: 
+            categorias["🎵 TikTok"] +=1
+        elif "Instagram" in data['nombre']: 
+            categorias["📸 Instagram"] +=1
+        elif "Telegram" in data['nombre']: 
+            categorias["✈️ Telegram"] +=1
+        elif "Facebook" in data['nombre']: 
+            categorias["📘 Facebook"] +=1
+        elif "YouTube" in data['nombre']: 
+            categorias["📺 YouTube"] +=1
 
     texto = f"""
 📋 <b>INFORME DE SERVICIOS Y PRECIOS</b>
