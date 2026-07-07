@@ -57,7 +57,7 @@ def cmd_start(msg):
     # ──── 🌟 MENSAJE DE BIENVENIDA PREMIUM ────
     texto_bienvenida = f"""
 ╔════════════════════════════════════════╗
-║       🚀  S I S T E M A   N O V A      ║
+║       🚀  S I S T E M A   N O V O      ║
 ╚════════════════════════════════════════╝
 
 👋 ¡Hola <b>{nombre}</b>! Bienvenido al mejor servicio.
@@ -255,7 +255,7 @@ def callback_handler(call):
     data = call.data
     
     # Admin callbacks
-    if data in ["admin_menu", "admin_dashboard", "manage_payments", "ver_comprobantes", "ver_tickets", "ver_rankings", "config_global", "panel_premium", "gestionar_tarjetas", "precios_cc"] or data.startswith(("edit_pay_", "toggle_", "change_", "delete_", "cambiar_precio_")):
+    if data in ["admin_menu", "admin_dashboard", "manage_payments", "ver_comprobantes", "ver_tickets", "ver_rankings", "gestionar_tarjetas", "precios_cc"] or data.startswith(("edit_pay_", "toggle_", "change_", "delete_", "cambiar_precio_")):
         handle_admin_callback(bot, call)
         return
     
