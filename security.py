@@ -59,7 +59,7 @@ def anti_spam(uid, accion="general"):
                 "fecha_bloqueo": datetime.now().strftime("%d/%m/%Y %H:%M")
             }
             
-            # 📝 LOG DE SEGURIDAD
+            # 📝 LOG
             log_warning(f"🔒 USUARIO BLOQUEADO POR SPAM | ID: {uid} | Acción: {accion}")
             
             # Notificar a admin
@@ -73,8 +73,8 @@ def anti_spam(uid, accion="general"):
 📝 Motivo: Spam/Flood en {accion}
 ⏳ Duración: 5 minutos
 """, parse_mode="HTML")
-            except:
-                pass
+            except Exception as e:
+                log_error("NOTIFICACION", f"No se pudo avisar a admin: {e}")
             
         return False
     
@@ -194,3 +194,20 @@ def stats_seguridad():
 ⚙️ Límite de acciones: <code>{INTENTOS_MAXIMOS}/min</code>
 ⏳ Tiempo de bloqueo: <code>{TIEMPO_BLOQUEO//60} min</code>
 """
+
+# ==============================================
+# 📝 FUNCIÓN LOG_WARNING (SI NO EXISTE EN LOGGER)
+# ==============================================
+def log_warning(mensaje):
+    """Función para logs de advertencia"""
+    print(f"[WARNING] {mensaje}")
+    try:
+        from logger import enviar_a_canal
+        txt = f"""
+⚠️ <b>ADVERTENCIA DE SEGURIDAD</b>
+📝 {mensaje}
+📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
+"""
+        enviar_a_canal(txt)
+    except:
+        pass
