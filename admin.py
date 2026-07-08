@@ -14,10 +14,7 @@ from logger import *
 # Importar módulos
 from comprobantes import ver_comprobantes_pendientes
 from cupones import listar_cupones_admin, crear_cupon
-from ranking import top_mejores_clientes, top_ganancias
-from payment_manager import menu_gestion_pagos, editar_metodo, toggle_estado, actualizar_datos, actualizar_comision, agregar_metodo, eliminar_metodo
-from soporte import ver_tickets_abiertos
-from stats import obtener_dashboard, obtener_ranking_usuarios, obtener_top_servicios, obtener_reporte_completo
+from stats import obtener_estadisticas_completas, obtener_ranking_usuarios, obtener_top_servicios, obtener_reporte_completo
 from tarjetas import menu_tienda, obtener_bases, obtener_stock_total
 
 # ==============================================
@@ -39,17 +36,15 @@ def menu_admin_principal(bot, msg):
     
     markup = InlineKeyboardMarkup(row_width=2)
     b1 = InlineKeyboardButton("📊 DASHBOARD", callback_data="admin_dashboard")
-    b2 = InlineKeyboardButton("💳 GESTIONAR PAGOS", callback_data="manage_payments")
-    b3 = InlineKeyboardButton("📸 COMPROBANTES", callback_data="ver_comprobantes")
-    b4 = InlineKeyboardButton("🎫 SOPORTE", callback_data="ver_tickets")
-    b5 = InlineKeyboardButton("🏆 RANKINGS", callback_data="ver_rankings")
-    b8 = InlineKeyboardButton("💳 TARJETAS CC", callback_data="gestionar_tarjetas")
-    b9 = InlineKeyboardButton("💲 PRECIOS CC", callback_data="precios_cc")
+    b2 = InlineKeyboardButton("📸 COMPROBANTES", callback_data="ver_comprobantes")
+    b3 = InlineKeyboardButton("🏆 RANKINGS", callback_data="ver_rankings")
+    b4 = InlineKeyboardButton("💳 TARJETAS CC", callback_data="gestionar_tarjetas")
+    b5 = InlineKeyboardButton("💲 PRECIOS CC", callback_data="precios_cc")
+    b6 = InlineKeyboardButton("🎫 SOPORTE", callback_data="ver_tickets")
     
     markup.add(b1, b2)
     markup.add(b3, b4)
-    markup.add(b5, b8)
-    markup.add(b9)
+    markup.add(b5, b6)
     
     bot.send_message(msg.chat.id, texto, reply_markup=markup, parse_mode="HTML")
 
@@ -57,18 +52,7 @@ def menu_admin_principal(bot, msg):
 # 📊 DASHBOARD
 # ==============================================
 def mostrar_dashboard(bot, call):
-    datos = obtener_dashboard()
-    
-    texto = f"""
-📊 <b>DASHBOARD DEL SISTEMA</b>
-
-👥 Usuarios Totales: <b>{datos['usuarios']}</b>
-🛒 Ventas Realizadas: <b>{datos['ventas']}</b>
-💳 Stock Total: <b>{datos['stock_tarjetas']}</b>
-💰 Ganancia Total: <b>{MONEDA} {datos['ganancias']:.2f}</b>
-
-✅ Sistema estable y funcionando
-"""
+    texto = obtener_estadisticas_completas()
     
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
@@ -80,6 +64,7 @@ def mostrar_dashboard(bot, call):
 # 🎫 SOPORTE
 # ==============================================
 def mostrar_tickets(bot, call):
+    from soporte import ver_tickets_abiertos
     texto = ver_tickets_abiertos()
     
     markup = InlineKeyboardMarkup()
@@ -92,7 +77,7 @@ def mostrar_tickets(bot, call):
 # 🏆 RANKINGS
 # ==============================================
 def mostrar_rankings(bot, call):
-    texto = top_mejores_clientes() + "\n\n" + top_ganancias()
+    texto = obtener_ranking_usuarios()
     
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
@@ -101,17 +86,10 @@ def mostrar_rankings(bot, call):
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# 💳 GESTIÓN DE PAGOS
-# ==============================================
-def mostrar_gestion_pagos(bot, call):
-    texto, markup = menu_gestion_pagos()
-    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
-
-# ==============================================
 # 📸 COMPROBANTES
 # ==============================================
 def mostrar_comprobantes(bot, call):
-    texto, compras = ver_comprobantes_pendientes()
+    texto, compras = ver_comprobantes_pendientes_db()
     
     markup = InlineKeyboardMarkup()
     btn_back = InlineKeyboardButton("🔙 VOLVER", callback_data="admin_menu")
@@ -141,17 +119,23 @@ def mostrar_gestion_tarjetas(bot, call):
 # 💲 EDITOR DE PRECIOS
 # ==============================================
 def menu_precios_cc(bot, call):
-    from config import PRECIOS_CC
+    # Diccionario de precios actualizado
+    precios_actuales = {
+        "visa": {"nombre": "💳 VISA", "precio": PRECIO_VISA},
+        "mastercard": {"nombre": "🏧 MASTERCARD", "precio": PRECIO_MASTERCARD},
+        "amex": {"nombre": "💳 AMEX", "precio": PRECIO_AMEX},
+        "discover": {"nombre": "💳 DISCOVER", "precio": PRECIO_DISCOVER}
+    }
     
     texto = "💲 <b>GESTIÓN DE PRECIOS</b>\n\n"
     texto += "🔘 Selecciona qué precio deseas cambiar:\n\n"
     
-    for key, data in PRECIOS_CC.items():
+    for key, data in precios_actuales.items():
         texto += f"{data['nombre']}: <b>{MONEDA} {data['precio']:.2f}</b>\n"
     
     markup = InlineKeyboardMarkup(row_width=2)
     
-    for key, data in PRECIOS_CC.items():
+    for key, data in precios_actuales.items():
         btn = InlineKeyboardButton(f"✏️ {data['nombre']}", callback_data=f"cambiar_precio_{key}")
         markup.add(btn)
     
@@ -161,8 +145,15 @@ def menu_precios_cc(bot, call):
     bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
 
 def solicitar_nuevo_precio(bot, call):
+    tipos = {
+        "visa": "VISA",
+        "mastercard": "MASTERCARD",
+        "amex": "AMEX",
+        "discover": "DISCOVER"
+    }
+    
     tipo = call.data.replace("cambiar_precio_", "")
-    nombre_tipo = PRECIOS_CC[tipo]['nombre']
+    nombre_tipo = tipos.get(tipo, tipo)
     
     markup = ForceReply()
     msg_pregunta = bot.send_message(call.message.chat.id, f"✍️ <b>Ingresa el nuevo precio para {nombre_tipo}:</b>\n\n(Escribe solo el número ejemplo: 15.50)", reply_markup=markup, parse_mode="HTML")
@@ -173,8 +164,15 @@ def guardar_nuevo_precio(msg, tipo, nombre_tipo):
     try:
         nuevo_precio = float(msg.text.replace(",", "."))
         
-        from config import PRECIOS_CC
-        PRECIOS_CC[tipo]['precio'] = nuevo_precio
+        # Actualizar variable global
+        if tipo == "visa":
+            globals()['PRECIO_VISA'] = nuevo_precio
+        elif tipo == "mastercard":
+            globals()['PRECIO_MASTERCARD'] = nuevo_precio
+        elif tipo == "amex":
+            globals()['PRECIO_AMEX'] = nuevo_precio
+        elif tipo == "discover":
+            globals()['PRECIO_DISCOVER'] = nuevo_precio
         
         bot.send_message(msg.chat.id, f"✅ <b>PRECIO ACTUALIZADO!</b>\n\n{nombre_tipo}: Ahora vale {MONEDA} {nuevo_precio:.2f}", parse_mode="HTML")
         
@@ -196,14 +194,8 @@ def handle_admin_callback(bot, call):
     elif data == "admin_dashboard":
         mostrar_dashboard(bot, call)
     
-    elif data == "manage_payments":
-        mostrar_gestion_pagos(bot, call)
-    
     elif data == "ver_comprobantes":
         mostrar_comprobantes(bot, call)
-    
-    elif data == "ver_tickets":
-        mostrar_tickets(bot, call)
     
     elif data == "ver_rankings":
         mostrar_rankings(bot, call)
@@ -213,22 +205,12 @@ def handle_admin_callback(bot, call):
         
     elif data == "precios_cc":
         menu_precios_cc(bot, call)
-
+    
     elif data.startswith("cambiar_precio_"):
         solicitar_nuevo_precio(bot, call)
     
-    # Manejar pagos
-    elif data.startswith("edit_pay_"):
-        key = data.replace("edit_pay_", "")
-        texto, markup = editar_metodo(key)
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
-    
-    elif data.startswith("toggle_"):
-        key = data.replace("toggle_", "")
-        resultado = toggle_estado(key)
-        bot.answer_callback_query(call.id, resultado, show_alert=True)
-        texto, markup = menu_gestion_pagos()
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+    elif data == "ver_tickets":
+        mostrar_tickets(bot, call)
 
 # ==============================================
 # 📝 REGISTRAR COMANDOS
