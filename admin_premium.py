@@ -17,6 +17,7 @@ from keyboards import boton_volver_admin
 # ==============================================
 def obtener_estadisticas():
     """Retorna datos globales del sistema"""
+    
     ventas = obtener_historial_premium()
     total_ventas = len(ventas)
     ingresos_totales = sum(v.get('precio', 0) for v in ventas)
@@ -35,23 +36,26 @@ def obtener_estadisticas():
     }
 
 # ==============================================
-# ➕ AGREGAR CUENTAS DESDE EL BOT
+# ➕ AGREGAR CUENTAS AL SISTEMA
 # ==============================================
-def agregar_cuentas_admin(servicio_id, cuentas_nuevas):
+def agregar_cuentas_admin(id_servicio, cuentas_nuevas):
     """
-    Agrega cuentas al stock
-    formato cuentas_nuevas: ["user|pass|dias", "user2|pass2|dias"]
+    Agrega cuentas al stock disponible
+    Formato: ["user|pass|dias", "user2|pass2|dias"]
     """
-    return agregar_cuentas_premium_db(servicio_id, cuentas_nuevas)
+    return agregar_cuentas_premium_db(id_servicio, cuentas_nuevas)
 
 # ==============================================
-# 📋 MENU PRINCIPAL PREMIUM ADMIN
+# 📋 MENÚ PRINCIPAL
 # ==============================================
-def panel_admin_premium(bot, msg):
-    uid = str(msg.from_user.id)
+def panel_admin_premium(bot, mensaje):
+    """Muestra el panel principal de control"""
     
-    if str(uid) != str(ADMIN_ID):
-        bot.send_message(msg.chat.id, "❌ Acceso denegado.", parse_mode="HTML")
+    id_usuario = str(mensaje.from_user.id)
+    
+    # Verificar permisos
+    if str(id_usuario) != str(ADMIN_ID):
+        bot.send_message(mensaje.chat.id, "❌ Acceso denegado.", parse_mode="HTML")
         return
     
     stats = obtener_estadisticas()
@@ -78,9 +82,11 @@ def panel_admin_premium(bot, msg):
     sum(stats['stock'].values())
 )
     
-    bot.send_message(msg.chat.id, texto, reply_markup=menu_admin_premium(), parse_mode="HTML")
+    bot.send_message(mensaje.chat.id, texto, reply_markup=menu_admin_premium(), parse_mode="HTML")
 
 def menu_admin_premium():
+    """Genera los botones del menú"""
+    
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     
     b1 = telebot.types.InlineKeyboardButton("➕ Agregar Cuentas", callback_data="admin_add_premium")
@@ -94,14 +100,16 @@ def menu_admin_premium():
     return markup
 
 # ==============================================
-# 🎛️ PROCESAR OPCIONES DEL PANEL
+# 🎛️ PROCESAR OPCIONES
 # ==============================================
-def procesar_admin_premium(bot, call):
-    data = call.data
-    uid = str(call.from_user.id)
+def procesar_admin_premium(bot, llamada):
+    """Controla las acciones de los botones"""
     
-    if str(uid) != str(ADMIN_ID):
-        bot.answer_callback_query(call.id, "❌ No permitido", show_alert=True)
+    data = llamada.data
+    id_usuario = str(llamada.from_user.id)
+    
+    if str(id_usuario) != str(ADMIN_ID):
+        bot.answer_callback_query(llamada.id, "❌ No permitido", show_alert=True)
         return
 
     # ➕ AGREGAR CUENTAS
@@ -118,7 +126,7 @@ Ejemplo:
 📋 Servicios disponibles:
 • netflix | disney | hbo | prime | spotify | crunchy
 """
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
+        bot.edit_message_text(texto, llamada.message.chat.id, llamada.message.message_id,
                               reply_markup=boton_volver_premium(), parse_mode="HTML")
 
     # ✏️ EDITAR PRECIOS
@@ -132,7 +140,7 @@ Usa el comando:
 Ejemplo:
 <code>/setprecio netflix 15.00</code>
 """
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
+        bot.edit_message_text(texto, llamada.message.chat.id, llamada.message.message_id,
                               reply_markup=boton_volver_premium(), parse_mode="HTML")
 
     # 📦 VER STOCK
@@ -144,7 +152,7 @@ Ejemplo:
             precio = obtener_precio_premium_db(servicio)
             texto += f"• <b>{servicio.upper()}</b>: {cantidad} unidades | {MONEDA} {precio:.2f}\n"
         
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
+        bot.edit_message_text(texto, llamada.message.chat.id, llamada.message.message_id,
                               reply_markup=boton_volver_premium(), parse_mode="HTML")
 
     # 📜 HISTORIAL
@@ -165,7 +173,7 @@ Ejemplo:
 ──────────────────────────
 """
         
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
+        bot.edit_message_text(texto, llamada.message.chat.id, llamada.message.message_id,
                               reply_markup=boton_volver_premium(), parse_mode="HTML")
 
     # 📊 REPORTES
@@ -182,13 +190,14 @@ Ejemplo:
 
 📅 Actualizado: {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
-        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id,
+        bot.edit_message_text(texto, llamada.message.chat.id, llamada.message.message_id,
                               reply_markup=boton_volver_premium(), parse_mode="HTML")
 
 # ==============================================
-# 🔘 BOTONES AUXILIARES
+# 🔘 BOTÓN VOLVER
 # ==============================================
 def boton_volver_premium():
     markup = telebot.types.InlineKeyboardMarkup()
-    markup.add(telebot.types.InlineKeyboardButton("🔙 Volver al Panel", callback_data="admin_premium_menu"))
+    btn = telebot.types.InlineKeyboardButton("🔙 Volver al Panel", callback_data="admin_premium_menu")
+    markup.add(btn)
     return markup
