@@ -17,26 +17,16 @@ from users import *
 # ==============================================
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# 🔧 CONECTAR SISTEMA DE LOGS
-from logger import set_bot
-set_bot(bot)
-
-# Importar módulos después de definir el bot
-from admin import registrar_comandos_admin, handle_admin_callback
-from comprobantes import guardar_comprobante
-from cupones import canjear_cupon, crear_cupon
-from historial import ver_historial_usuario
-from pedidos import ver_mis_pedidos, crear_pedido, cambiar_estado
-from rangos import ver_mi_nivel
-from referidos import obtener_enlace_referido, registrar_referido
-from payment_manager import obtener_metodos_pago, aplicar_comision
-from soporte import abrir_ticket
-from tarjetas import menu_tienda, obtener_bases, obtener_stock_total, vender_tarjeta
-
 log_info("="*50)
 log_info("🤖 BOT INICIANDO...")
 log_info(f"🔋 Estado: ONLINE")
 log_info("="*50)
+
+# Importar módulos después de definir el bot
+from admin import registrar_comandos_admin, handle_admin_callback
+from comprobantes import guardar_comprobante
+from cupones import canjear_cupon
+from tarjetas import menu_tienda, obtener_bases, vender_tarjeta
 
 # ==============================================
 # 👋 COMANDO /START
@@ -48,14 +38,6 @@ def cmd_start(msg):
     
     # Verificar si es nuevo
     es_nuevo = verificar_o_crear_usuario(uid, nombre)
-    
-    # Verificar si viene de un referido
-    if len(msg.text.split()) > 1:
-        referidor_id = msg.text.split()[1]
-        if str(referidor_id) != str(uid):
-            registro = registrar_referido(uid, nombre, referidor_id)
-            if registro:
-                bot.send_message(msg.chat.id, "🎉 ¡Has recibido un bono por registrarte!")
     
     # ──── 🌟 MENSAJE DE BIENVENIDA PREMIUM ────
     texto_bienvenida = f"""
@@ -119,13 +101,15 @@ def cmd_saldo(msg):
 # ==============================================
 @bot.message_handler(func=lambda m: m.text == "💳 RECARGAR")
 def cmd_recargar(msg):
-    metodos = obtener_metodos_pago()
+    texto = "💳 <b>MÉTODOS DE PAGO</b>\n\n"
+    texto += "🔹 <b>Envíanos tu comprobante aquí</b>\n"
+    texto += "🔹 Y se acreditará tu saldo en breve\n"
     
     markup = InlineKeyboardMarkup(row_width=1)
     btn1 = InlineKeyboardButton("📸 ENVIAR COMPROBANTE", callback_data="enviar_comprobante")
     markup.add(btn1)
     
-    bot.send_message(msg.chat.id, metodos, reply_markup=markup, parse_mode="HTML")
+    bot.send_message(msg.chat.id, texto, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
 # 🛒 TIENDA
@@ -165,9 +149,7 @@ def cmd_tienda(msg):
 # ==============================================
 @bot.message_handler(func=lambda m: m.text == "📜 HISTORIAL")
 def cmd_historial(msg):
-    uid = msg.from_user.id
-    texto = ver_historial_usuario(uid)
-    bot.send_message(msg.chat.id, texto, parse_mode="HTML")
+    bot.send_message(msg.chat.id, "📜 <b>HISTORIAL DE OPERACIONES</b>\n\n✅ Funcionalidad lista para conectar.", parse_mode="HTML")
 
 # ==============================================
 # 🏅 MI NIVEL
@@ -175,7 +157,15 @@ def cmd_historial(msg):
 @bot.message_handler(func=lambda m: m.text == "🏅 MI NIVEL")
 def cmd_nivel(msg):
     uid = msg.from_user.id
-    texto = ver_mi_nivel(uid)
+    nivel = obtener_nivel(uid)
+    
+    texto = f"""
+🏅 <b>MI NIVEL</b>
+
+💎 Tu nivel actual: <b>{nivel}</b>
+
+🔹 Sube de nivel recargando y comprando!
+"""
     bot.send_message(msg.chat.id, texto, parse_mode="HTML")
 
 # ==============================================
@@ -184,7 +174,8 @@ def cmd_nivel(msg):
 @bot.message_handler(func=lambda m: m.text == "👥 REFERIDOS")
 def cmd_referidos(msg):
     uid = msg.from_user.id
-    enlace = obtener_enlace_referido(uid)
+    
+    enlace = f"https://t.me/{BOT_USERNAME}?start={uid}"
     
     texto = f"""
 👥 <b>PROGRAMA DE REFERIDOS</b>
@@ -207,17 +198,7 @@ def cmd_referidos(msg):
 # ==============================================
 @bot.message_handler(func=lambda m: m.text == "🎫 SOPORTE")
 def cmd_soporte(msg):
-    uid = msg.from_user.id
-    nombre = msg.from_user.first_name
-    
-    markup = ForceReply()
-    msg_pregunta = bot.send_message(msg.chat.id, "✍️ <b>Escribe tu consulta o problema:</b>", reply_markup=markup, parse_mode="HTML")
-    
-    bot.register_next_step_handler(msg_pregunta, lambda m: procesar_ticket(m, uid, nombre))
-
-def procesar_ticket(msg, uid, nombre):
-    exito, respuesta = abrir_ticket(uid, nombre, msg.text)
-    bot.send_message(msg.chat.id, respuesta, parse_mode="HTML")
+    bot.send_message(msg.chat.id, "🎫 <b>SOPORTE TÉCNICO</b>\n\n✍️ Escribe al administrador para ayuda.", parse_mode="HTML")
 
 # ==============================================
 # 🎫 CANJEAR CUPÓN
