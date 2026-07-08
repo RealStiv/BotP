@@ -10,95 +10,96 @@ import re
 import time
 from datetime import datetime
 from config import *
-from logger import *      # 📝 SISTEMA DE LOGS
-from database import *    # 🍃 MONGODB
+from logger import *      # 📝 Sistema de registros
+from database import *    # 🍃 Conexión MongoDB
 
 # ==============================================
-# ⚙️ CONFIGURACIÓN DE SEGURIDAD
+# ⚙️ CONFIGURACIÓN GLOBAL
 # ==============================================
-INTENTOS_MAXIMOS = 30
-TIEMPO_BLOQUEO = 300  # 5 minutos en segundos
+INTENTOS_MAXIMOS = 30       # Acciones por minuto
+TIEMPO_BLOQUEO = 300       # Segundos (5 minutos)
 
 # ==============================================
-# 🗄️ BASE DE DATOS DE BLOQUEOS
+# 🗄️ BASE DE DATOS TEMPORAL
 # ==============================================
 sistema_bloqueos = {}
 historial_acciones = {}
 
 # ==============================================
-# 🚫 ANTI-SPAM Y ANTI-FLOOD AVANZADO
+# 🚫 SISTEMA ANTI-SPAM Y ANTI-FLOOD
 # ==============================================
-def anti_spam(uid, accion="general"):
+def anti_spam(id_usuario, accion="general"):
     """
-    Detecta acciones repetitivas y bloquea temporalmente
+    Detecta acciones repetitivas y bloquea temporalmente.
+    Retorna True si puede continuar, False si está bloqueado.
     """
-    uid = str(uid)
+    id_usuario = str(id_usuario)
     ahora = time.time()
     
-    # Inicializar estructuras
-    if uid not in historial_acciones:
-        historial_acciones[uid] = {}
-    if accion not in historial_acciones[uid]:
-        historial_acciones[uid][accion] = []
+    # Inicializar estructuras si no existen
+    if id_usuario not in historial_acciones:
+        historial_acciones[id_usuario] = {}
+    if accion not in historial_acciones[id_usuario]:
+        historial_acciones[id_usuario][accion] = []
     
     # Limpiar acciones antiguas (mayores a 60 seg)
-    historial_acciones[uid][accion] = [
-        t for t in historial_acciones[uid][accion] 
+    historial_acciones[id_usuario][accion] = [
+        t for t in historial_acciones[id_usuario][accion]
         if ahora - t < 60
     ]
     
-    # Agregar acción actual
-    historial_acciones[uid][accion].append(ahora)
+    # Registrar acción actual
+    historial_acciones[id_usuario][accion].append(ahora)
     
     # Verificar límite
-    if len(historial_acciones[uid][accion]) > INTENTOS_MAXIMOS:
-        if uid not in sistema_bloqueos:
-            sistema_bloqueos[uid] = {
+    if len(historial_acciones[id_usuario][accion]) > INTENTOS_MAXIMOS:
+        if id_usuario not in sistema_bloqueos:
+            sistema_bloqueos[id_usuario] = {
                 "hasta": ahora + TIEMPO_BLOQUEO,
-                "razon": f"Spam en: {accion}",
+                "razon": f"Spam/Flood en: {accion}",
                 "fecha_bloqueo": datetime.now().strftime("%d/%m/%Y %H:%M")
             }
             
-            # 📝 LOG
-            log_warning(f"🔒 USUARIO BLOQUEADO POR SPAM | ID: {uid} | Acción: {accion}")
+            # 📝 Registro en sistema
+            log_warning(f"🔒 USUARIO BLOQUEADO | ID: {id_usuario} | Motivo: {accion}")
             
-            # Notificar a admin
+            # Notificar al administrador
             try:
                 from main import bot
                 bot.send_message(ADMIN_ID, f"""
 ⚠️ <b>ALERTA DE SEGURIDAD</b>
 
 🔒 Usuario bloqueado automáticamente
-🆔 ID: <code>{uid}</code>
+🆔 ID: <code>{id_usuario}</code>
 📝 Motivo: Spam/Flood en {accion}
-⏳ Duración: 5 minutos
+⏳ Duración: {TIEMPO_BLOQUEO//60} minutos
 """, parse_mode="HTML")
             except Exception as e:
-                log_error("NOTIFICACION", f"No se pudo avisar a admin: {e}")
-            
-        return False
+                log_error("NOTIFICACIÓN", f"No se pudo avisar al admin: {e}")
+        
+        return False  # Bloquear acción
     
-    return True
+    return True  # Permitir acción
 
 # ==============================================
 # ⏱️ VERIFICAR ESTADO DE BLOQUEO
 # ==============================================
-def verificar_bloqueo(uid):
+def verificar_bloqueo(id_usuario):
     """
     Retorna: (esta_bloqueado, minutos_restantes)
     """
-    uid = str(uid)
+    id_usuario = str(id_usuario)
     ahora = time.time()
     
-    if uid in sistema_bloqueos:
-        if ahora < sistema_bloqueos[uid]["hasta"]:
-            tiempo_restante = int(sistema_bloqueos[uid]["hasta"] - ahora)
+    if id_usuario in sistema_bloqueos:
+        if ahora < sistema_bloqueos[id_usuario]["hasta"]:
+            tiempo_restante = int(sistema_bloqueos[id_usuario]["hasta"] - ahora)
             minutos = tiempo_restante // 60
             return True, minutos
         else:
-            # Desbloquear automáticamente
-            del sistema_bloqueos[uid]
-            log_info(f"✅ USUARIO DESBLOQUEADO | ID: {uid}")
+            # Desbloqueo automático
+            del sistema_bloqueos[id_usuario]
+            log_info(f"✅ USUARIO DESBLOQUEADO | ID: {id_usuario}")
     
     return False, 0
 
@@ -108,43 +109,44 @@ def verificar_bloqueo(uid):
 def sanitizar_texto(texto):
     """
     Limpia el texto eliminando caracteres peligrosos
+    y limita la longitud máxima.
     """
     if not texto:
         return ""
     
-    texto = str(texto)[:500]  # Limitar longitud
+    texto = str(texto)[:500]  # Límite de seguridad
     
-    # Patrones peligrosos
-    patrones = [
-        r'`', r'~', r'\|', r';', r'\$', 
+    # Patrones a eliminar
+    patrones_peligrosos = [
+        r'`', r'~', r'\|', r';', r'\$',
         r'exec\(', r'eval\(', r'__', r'import',
         r'--', r'\/\*', r'\*\/', r'UNION', r'SELECT'
     ]
     
-    for p in patrones:
-        texto = re.sub(p, '', texto, flags=re.IGNORECASE)
+    for patron in patrones_peligrosos:
+        texto = re.sub(patron, '', texto, flags=re.IGNORECASE)
     
     return texto.strip()
 
 # ==============================================
 # 🔒 VALIDADOR DE LINKS SEGUROS
 # ==============================================
-def validar_link_seguro(link):
+def validar_link_seguro(enlace):
     """
-    Verifica que el enlace sea de un dominio permitido
+    Verifica que el enlace sea de un dominio permitido y seguro.
     """
-    if not link:
+    if not enlace:
         return False
     
-    link = link.lower().strip()
+    enlace = enlace.lower().strip()
     
-    # Verificar estructura básica
-    if not link.startswith('http'):
+    # Validación básica de estructura
+    if not enlace.startswith('http'):
         return False
-    if len(link) < 15 or len(link) > 500:
+    if len(enlace) < 15 or len(enlace) > 500:
         return False
     
-    # Dominios permitidos
+    # Lista blanca de dominios
     dominios_permitidos = [
         'tiktok.com',
         'instagram.com',
@@ -158,33 +160,33 @@ def validar_link_seguro(link):
         'whatsapp.com'
     ]
     
-    return any(dominio in link for dominio in dominios_permitidos)
+    return any(dominio in enlace for dominio in dominios_permitidos)
 
 # ==============================================
-# 🛑 BLOQUEO MANUAL POR ADMIN
+# 🛑 CONTROL MANUAL POR ADMIN
 # ==============================================
-def bloquear_usuario(uid, razon="Manual por Admin"):
-    """Bloquear usuario permanentemente o por tiempo"""
-    uid = str(uid)
-    sistema_bloqueos[uid] = {
-        "hasta": time.time() + 86400,  # 24 horas por defecto
+def bloquear_usuario(id_usuario, razon="Manual por Admin"):
+    """Bloquear usuario manualmente (por defecto 24h)"""
+    id_usuario = str(id_usuario)
+    sistema_bloqueos[id_usuario] = {
+        "hasta": time.time() + 86400,  # 24 horas
         "razon": razon,
         "fecha_bloqueo": datetime.now().strftime("%d/%m/%Y %H:%M")
     }
-    log_warning(f"⛔ USUARIO BLOQUEADO MANUALMENTE | ID: {uid} | Razón: {razon}")
+    log_warning(f"⛔ BLOQUEO MANUAL | ID: {id_usuario} | Razón: {razon}")
     return True
 
-def desbloquear_usuario(uid):
-    """Desbloquear usuario"""
-    uid = str(uid)
-    if uid in sistema_bloqueos:
-        del sistema_bloqueos[uid]
-        log_info(f"✅ USUARIO DESBLOQUEADO | ID: {uid}")
+def desbloquear_usuario(id_usuario):
+    """Quitar bloqueo a un usuario"""
+    id_usuario = str(id_usuario)
+    if id_usuario in sistema_bloqueos:
+        del sistema_bloqueos[id_usuario]
+        log_info(f"✅ DESBLOQUEO MANUAL | ID: {id_usuario}")
         return True
     return False
 
 # ==============================================
-# 📊 ESTADÍSTICAS DE SEGURIDAD
+# 📊 ESTADÍSTICAS
 # ==============================================
 def stats_seguridad():
     return f"""
@@ -194,20 +196,3 @@ def stats_seguridad():
 ⚙️ Límite de acciones: <code>{INTENTOS_MAXIMOS}/min</code>
 ⏳ Tiempo de bloqueo: <code>{TIEMPO_BLOQUEO//60} min</code>
 """
-
-# ==============================================
-# 📝 FUNCIÓN LOG_WARNING (SI NO EXISTE EN LOGGER)
-# ==============================================
-def log_warning(mensaje):
-    """Función para logs de advertencia"""
-    print(f"[WARNING] {mensaje}")
-    try:
-        from logger import enviar_a_canal
-        txt = f"""
-⚠️ <b>ADVERTENCIA DE SEGURIDAD</b>
-📝 {mensaje}
-📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
-"""
-        enviar_a_canal(txt)
-    except:
-        pass
