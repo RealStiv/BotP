@@ -8,7 +8,7 @@ from database import *
 from logger import *
 
 # ==============================================
-# 💲 DEFINICIÓN DE PRECIOS
+# 💲 PRECIOS Y CONFIGURACIÓN
 # ==============================================
 PRECIOS = {
     "visa": 15.00,
@@ -17,9 +17,6 @@ PRECIOS = {
     "discover": 10.00
 }
 
-# ==============================================
-# 📦 ESTRUCTURA DE BASES DE DATOS
-# ==============================================
 BASES_CC = {
     "visa": {
         "nombre": "💳 VISA",
@@ -44,10 +41,11 @@ BASES_CC = {
 }
 
 # ==============================================
-# 📄 CARGAR TARJETAS DESDE ARCHIVOS .TXT
+# 📄 CARGA DESDE ARCHIVOS .TXT
 # ==============================================
 def cargar_tarjetas():
-    """Carga las tarjetas desde la carpeta configurada"""
+    """Lee los archivos y carga las tarjetas en memoria"""
+    
     for tipo, datos in BASES_CC.items():
         ruta_archivo = os.path.join(RUTA_BASES_TXT, f"{tipo}.txt")
         
@@ -66,14 +64,15 @@ def cargar_tarjetas():
             datos['tarjetas'] = []
             log_warning(f"⚠️ Archivo {tipo}.txt no encontrado en {ruta_archivo}")
 
-# Ejecutar carga automática al iniciar
+# Ejecutar carga automática
 cargar_tarjetas()
 
 # ==============================================
-# 📋 MENU TIENDA
+# 📋 MENÚ VISUAL PARA USUARIO
 # ==============================================
 def menu_tienda():
-    """Genera el texto del menú visual para el usuario"""
+    """Genera el texto con precios y disponibilidad"""
+    
     texto = """
 💳 <b>TARJETAS C R E D I T   C A R D S</b>
 
@@ -85,14 +84,14 @@ def menu_tienda():
     for tipo, datos in BASES_CC.items():
         estado = "✅ DISPONIBLE" if len(datos['tarjetas']) > 0 else "❌ AGOTADO"
         texto += f"{datos['nombre']}\n"
-        texto += f"💲 Precio: <b>{MONEDA} {datos['precio']:.2f}</b> | {estado}\n"
+        texto += f"💲 Precio: {MONEDA} {datos['precio']:.2f} | {estado}\n"
         texto += "────────────────────────────────────────\n"
 
     texto += "\n🔘 <b>Selecciona una opción para comprar</b>"
     return texto
 
 # ==============================================
-# 📦 OBTENER INFORMACIÓN
+# 📦 OBTENER DATOS
 # ==============================================
 def obtener_bases():
     return BASES_CC
@@ -103,30 +102,26 @@ def obtener_stock_total():
 # ==============================================
 # 💸 PROCESO DE VENTA
 # ==============================================
-def vender_tarjeta(uid_usuario, nombre_usuario, tipo_tarjeta):
+def vender_tarjeta(id_usuario, nombre_usuario, tipo_tarjeta):
     """
-    Lógica completa para vender una tarjeta:
-    - Valida existencia
-    - Verifica saldo
-    - Descuenta
-    - Entrega el código
+    Valida, descuenta saldo y entrega la tarjeta
     """
     
-    # 1. Validar que el tipo exista
+    # Validar tipo
     if tipo_tarjeta not in BASES_CC:
-        return False, "❌ Tipo de tarjeta no válido o no disponible."
+        return False, "❌ <b>Tipo de tarjeta no válido o no disponible</b>"
 
     base = BASES_CC[tipo_tarjeta]
 
-    # 2. Verificar stock
+    # Verificar stock
     if not base['tarjetas']:
-        return False, "❌ Lo sentimos, actualmente no hay stock disponible."
-
-    # 3. Obtener datos económicos
-    saldo_actual = obtener_saldo(uid_usuario)
+        return False, "❌ <b>Lo sentimos, actualmente no hay stock disponible</b>"
+    
+    # Datos económicos
+    saldo_actual = obtener_saldo(id_usuario)
     precio = base['precio']
 
-    # 4. Verificar fondos
+    # Verificar fondos
     if saldo_actual < precio:
         return False, f"""
 ❌ <b>SALDO INSUFICIENTE</b>
@@ -137,15 +132,15 @@ def vender_tarjeta(uid_usuario, nombre_usuario, tipo_tarjeta):
 🔹 Necesitas recargar para poder comprar.
 """
 
-    # 5. Ejecutar transacción
-    tarjeta_entregada = base['tarjetas'].pop(0)  # Saca la primera de la lista
-    descontar_saldo(uid_usuario, precio)
-    registrar_compra_db(uid_usuario, nombre_usuario, f"Tarjeta {base['nombre']}", precio, "Activo")
+    # Ejecutar venta
+    tarjeta_entregada = base['tarjetas'].pop(0)
+    descontar_saldo(id_usuario, precio)
+    registrar_compra_db(id_usuario, nombre_usuario, f"Tarjeta {base['nombre']}", precio, "Activo")
 
-    # Log del sistema
+    # LOG
     log_info(f"💳 VENTA: {nombre_usuario} compró {tipo_tarjeta} por {MONEDA} {precio}")
 
-    # 6. Mensaje de éxito
+    # Mensaje final
     mensaje_respuesta = f"""
 ╔════════════════════════════════════════╗
 ║       ✅  C O M P R A   R E A L I Z A D A      ║
@@ -155,7 +150,7 @@ def vender_tarjeta(uid_usuario, nombre_usuario, tipo_tarjeta):
 
 💳 Producto: <b>{base['nombre']}</b>
 💰 Precio: <b>{MONEDA} {precio:.2f}</b>
-📉 Saldo restante: <b>{MONEDA} {obtener_saldo(uid_usuario):.2f}</b>
+📉 Saldo restante: <b>{MONEDA} {obtener_saldo(id_usuario):.2f}</b>
 
 ────────────────────────────────────────
 🔐 <b>TU TARJETA:</b>
