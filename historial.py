@@ -9,39 +9,42 @@ from config import *
 from database import *
 
 # ==============================================
-# ➕ REGISTRAR MOVIMIENTO
+# ➕ REGISTRAR ACCIÓN EN LA DB
 # ==============================================
-def registrar_movimiento(uid, nombre, tipo, monto, descripcion):
+def registrar_movimiento(id_usuario, nombre_usuario, tipo, monto, descripcion):
     """
-    Registra cualquier acción en la base de datos
-    tipos: RECARGA, COMPRA, PREMIUM, RETIRO, BONO
+    Guarda cualquier operación en la base de datos.
+    Tipos: RECARGA, COMPRA, PREMIUM, RETIRO, BONO
     """
-    movimiento = {
-        "uid": str(uid),
-        "nombre": nombre,
+    
+    nuevo_movimiento = {
+        "uid": str(id_usuario),
+        "nombre": nombre_usuario,
         "tipo": tipo,
         "monto": float(monto),
         "descripcion": descripcion,
         "fecha": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
     
-    # Guardar en MongoDB
-    insertar_movimiento_db(movimiento)
+    insertar_movimiento_db(nuevo_movimiento)
     return True
 
 # ==============================================
 # 📋 VER HISTORIAL DEL USUARIO
 # ==============================================
-def ver_historial_usuario(uid):
-    """Muestra los últimos 15 movimientos del usuario"""
-    movimientos = obtener_movimientos_usuario_db(str(uid))
+def ver_historial_usuario(id_usuario):
+    """
+    Muestra los últimos 15 movimientos ordenados del más nuevo al más viejo.
+    """
+    
+    movimientos = obtener_movimientos_usuario_db(str(id_usuario))
     
     if not movimientos:
         return "📭 <b>No tienes movimientos aún</b>\n\nRealiza tu primera operación para ver el historial."
     
     texto = "📜 <b>HISTORIAL DE MOVIMIENTOS</b>\n\n"
     
-    # Iconos por tipo
+    # Iconos según el tipo de movimiento
     iconos = {
         "RECARGA": "💵",
         "COMPRA": "🛒",
@@ -50,7 +53,8 @@ def ver_historial_usuario(uid):
         "BONO": "🎁"
     }
     
-    for mov in reversed(movimientos[-15:]):  # Ultimos 15, ordenados nuevos primero
+    # Mostrar últimos 15, ordenados nuevos primero
+    for mov in reversed(movimientos[-15:]):
         icono = iconos.get(mov['tipo'], "🔹")
         texto += f"{icono} <b>{mov['tipo']}</b>\n"
         texto += f"💸 Monto: {MONEDA} {mov['monto']:.2f}\n"
