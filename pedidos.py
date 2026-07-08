@@ -8,17 +8,17 @@ from datetime import datetime
 from config import *
 from database import *
 
-# ESTADOS POSIBLES: PAGADO | PROCESANDO | ENVIADO | ENTREGADO | CANCELADO
-
 # ==============================================
-# ➕ CREAR PEDIDO
+# ➕ CREAR NUEVO PEDIDO
 # ==============================================
-def crear_pedido(uid, nombre, servicio, monto, tipo="SERVICIO"):
-    """Crea un nuevo pedido con estado inicial"""
+def crear_pedido(id_usuario, nombre_usuario, servicio, monto, tipo="SERVICIO"):
+    """
+    Crea un nuevo pedido en la base de datos con estado inicial "PAGADO"
+    """
     
-    pedido = {
-        "uid": str(uid),
-        "nombre": nombre,
+    nuevo_pedido = {
+        "uid": str(id_usuario),
+        "nombre": nombre_usuario,
         "servicio": servicio,
         "monto": float(monto),
         "tipo": tipo,
@@ -32,20 +32,22 @@ def crear_pedido(uid, nombre, servicio, monto, tipo="SERVICIO"):
         ]
     }
     
-    insertar_pedido_db(pedido)
-    return pedido
+    insertar_pedido_db(nuevo_pedido)
+    return nuevo_pedido
 
 # ==============================================
-# 🔄 CAMBIAR ESTADO
+# 🔄 ACTUALIZAR ESTADO
 # ==============================================
-def cambiar_estado(pedido_id, nuevo_estado):
-    """Actualiza el estado y guarda el historial"""
+def cambiar_estado(id_pedido, nuevo_estado):
+    """
+    Actualiza el estado del pedido y guarda en el historial
+    """
     
-    pedido = obtener_pedido_db(pedido_id)
+    pedido = obtener_pedido_db(id_pedido)
     if not pedido:
         return False
     
-    # Agregar al historial
+    # Registrar cambio
     nuevo_historial = {
         "estado": nuevo_estado,
         "fecha": datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -54,14 +56,18 @@ def cambiar_estado(pedido_id, nuevo_estado):
     pedido['historial_estados'].append(nuevo_historial)
     pedido['estado'] = nuevo_estado
     
-    actualizar_pedido_db(pedido_id, pedido)
+    actualizar_pedido_db(id_pedido, pedido)
     return True
 
 # ==============================================
-# 📋 VER MIS PEDIDOS
+# 📋 VER LISTADO DE PEDIDOS DEL USUARIO
 # ==============================================
-def ver_mis_pedidos(uid):
-    pedidos = obtener_pedidos_usuario_db(str(uid))
+def ver_mis_pedidos(id_usuario):
+    """
+    Muestra los últimos 10 pedidos del usuario con su estado
+    """
+    
+    pedidos = obtener_pedidos_usuario_db(str(id_usuario))
     
     if not pedidos:
         return "📭 <b>No tienes pedidos aún</b>"
@@ -76,7 +82,7 @@ def ver_mis_pedidos(uid):
         "CANCELADO": "❌"
     }
     
-    for p in pedidos[-10:]:  # Ultimos 10
+    for p in pedidos[-10:]:  # Mostrar solo últimos 10
         icono = iconos_estado.get(p['estado'], "🔹")
         texto += f"{icono} <b>{p['servicio']}</b>\n"
         texto += f"📊 Estado: <b>{p['estado']}</b>\n"
