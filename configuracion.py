@@ -11,16 +11,19 @@ from database import *
 from logger import *
 
 # ==============================================
-# 📋 MENÚ PRINCIPAL DE CONFIGURACIÓN
+# 📋 MENÚ PRINCIPAL
 # ==============================================
-def panel_configuracion(bot, msg):
-    uid = str(msg.from_user.id)
+def panel_configuracion(bot, mensaje):
+    """Muestra el panel de control general"""
     
-    if str(uid) != str(ADMIN_ID):
-        bot.send_message(msg.chat.id, "❌ Acceso denegado.", parse_mode="HTML")
+    id_usuario = str(mensaje.from_user.id)
+    
+    # Verificar permisos
+    if str(id_usuario) != str(ADMIN_ID):
+        bot.send_message(mensaje.chat.id, "❌ Acceso denegado.", parse_mode="HTML")
         return
     
-    # Obtener configuración actual
+    # Obtener datos actuales
     config = obtener_configuracion_db()
     
     estado_mantenimiento = "🔴 ACTIVO" if config.get('mantenimiento', False) else "🟢 INACTIVO"
@@ -48,12 +51,14 @@ def panel_configuracion(bot, msg):
     b4 = telebot.types.InlineKeyboardButton("🔙 Volver al Admin", callback_data="admin_menu")
     markup.add(b1, b2, b3, b4)
     
-    bot.send_message(msg.chat.id, texto, reply_markup=markup, parse_mode="HTML")
+    bot.send_message(mensaje.chat.id, texto, reply_markup=markup, parse_mode="HTML")
 
 # ==============================================
-# 🔄 CAMBIAR ESTADO DE MANTENIMIENTO
+# 🔄 MODO MANTENIMIENTO
 # ==============================================
 def toggle_mantenimiento():
+    """Cambia el estado de mantenimiento"""
+    
     config = obtener_configuracion_db()
     nuevo_estado = not config.get('mantenimiento', False)
     
@@ -67,9 +72,11 @@ def toggle_mantenimiento():
         return "🟢 <b>SISTEMA ACTIVO</b>\nTodos los servicios funcionan normal."
 
 # ==============================================
-# ✏️ ACTUALIZAR TEXTOS
+# ✏️ EDITAR TEXTOS
 # ==============================================
 def actualizar_texto(tipo, texto_nuevo):
+    """Actualiza mensajes personalizados"""
+    
     if tipo == "bienvenida":
         actualizar_configuracion_db({"bienvenida": texto_nuevo})
         log_info("CONFIG: Mensaje de bienvenida actualizado")
