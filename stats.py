@@ -13,16 +13,16 @@ from datetime import datetime
 # 📊 DASHBOARD PRINCIPAL
 # ==============================================
 def obtener_estadisticas_completas():
-    """Función principal que devuelve el dashboard completo"""
-    # Obtener datos desde MongoDB
+    """Muestra el panel general con datos del sistema"""
+    
     from database import total_usuarios_db, sumar_ganancias_totales
     
-    # Datos básicos
+    # Datos generales
     total_usuarios = total_usuarios_db()
     ganancias_totales = sumar_ganancias_totales()
     total_servicios = len(SERVICIOS)
     
-    # Fecha y hora actual
+    # Fecha actual
     ahora = datetime.now()
     fecha = ahora.strftime("%d/%m/%Y")
     hora = ahora.strftime("%H:%M:%S")
@@ -51,10 +51,11 @@ def obtener_estadisticas_completas():
     return texto
 
 # ==============================================
-# 📈 TOP 5 DE USUARIOS
+# 📈 RANKING DE USUARIOS
 # ==============================================
 def obtener_ranking_usuarios():
-    """Obtiene ranking desde la base de datos"""
+    """Top 5 clientes con mayor saldo"""
+    
     from database import obtener_todos_usuarios_db
     
     usuarios = obtener_todos_usuarios_db()
@@ -62,7 +63,7 @@ def obtener_ranking_usuarios():
     if not usuarios:
         return "❌ No hay datos aún."
     
-    # Ordenar por saldo (o lo que quieras usar para ranking)
+    # Ordenar por saldo descendente
     usuarios_ordenados = sorted(usuarios, key=lambda x: x.get('saldo', 0), reverse=True)
     
     texto = "🏆 <b>TOP 5 - MEJORES CLIENTES</b>\n\n"
@@ -77,9 +78,11 @@ def obtener_ranking_usuarios():
     return texto
 
 # ==============================================
-# 📋 INFORME DETALLADO DE SERVICIOS
+# 📋 ANÁLISIS DE SERVICIOS
 # ==============================================
 def obtener_top_servicios():
+    """Informe de precios y categorías"""
+    
     categorias = {
         "🎵 TikTok": 0,
         "📸 Instagram": 0,
@@ -98,7 +101,7 @@ def obtener_top_servicios():
         if precio > servicio_mas_caro[1]:
             servicio_mas_caro = (data['nombre'], precio)
             
-        # Contar por categoría
+        # Clasificar
         if "TikTok" in data['nombre']: 
             categorias["🎵 TikTok"] +=1
         elif "Instagram" in data['nombre']: 
@@ -131,9 +134,11 @@ def obtener_top_servicios():
     return texto
 
 # ==============================================
-# 📄 REPORTE PARA EXPORTAR
+# 📄 REPORTE GENERAL
 # ==============================================
 def obtener_reporte_completo():
+    """Lista de usuarios y saldos"""
+    
     from database import obtener_todos_usuarios_db
     
     usuarios = obtener_todos_usuarios_db()
@@ -144,7 +149,6 @@ def obtener_reporte_completo():
     texto += f"🛒 Servicios: <code>{len(SERVICIOS)}</code>\n"
     texto += "\n<b>Últimos usuarios registrados:</b>\n"
     
-    # Mostrar últimos 10
     for datos in usuarios[-10:]:
         nombre = datos.get('nombre', f'ID: {datos["id"]}')
         texto += f"🆔 <code>{datos['id']}</code> - {nombre} - {MONEDA} {datos.get('saldo',0):.2f}\n"
@@ -152,7 +156,7 @@ def obtener_reporte_completo():
     return texto
 
 # ==============================================
-# 📈 GRÁFICO DE RENDIMIENTO
+# 📈 GRÁFICOS Y RENDIMIENTO
 # ==============================================
 def grafico_ventas_semanales():
     from database import total_ventas_db
@@ -183,10 +187,11 @@ def analisis_temporal():
     return texto
 
 # ==============================================
-# 🧑‍💼 ESTADÍSTICAS PARA PANEL ADMIN
+# 🧑‍💼 STATS RÁPIDAS
 # ==============================================
 def stats_rapidas():
-    """Stats pequeñas para mensajes rápidos"""
+    """Datos cortos para mensajes rápidos"""
+    
     from database import total_usuarios_db, total_ventas_db
     
     return f"""
