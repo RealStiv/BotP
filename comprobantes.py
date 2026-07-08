@@ -12,15 +12,15 @@ from logger import *
 # ==============================================
 # 📤 SUBIR COMPROBANTE
 # ==============================================
-def guardar_comprobante(uid, nombre, monto, metodo, file_id):
+def guardar_comprobante(id_usuario, nombre_usuario, monto, metodo, file_id):
     """
-    Guarda la imagen del comprobante
-    file_id: Es el ID de la foto que envía Telegram
+    Guarda la imagen del comprobante en la base de datos
+    file_id: ID de la foto enviada por Telegram
     """
     
     comprobante = {
-        "uid": str(uid),
-        "nombre": nombre,
+        "uid": str(id_usuario),
+        "nombre": nombre_usuario,
         "monto": float(monto),
         "metodo": metodo,
         "foto_id": file_id,
@@ -29,7 +29,7 @@ def guardar_comprobante(uid, nombre, monto, metodo, file_id):
     }
     
     insertar_comprobante_db(comprobante)
-    log_info(f"COMPROBANTE: Recibido de {nombre} | Monto: {monto}")
+    log_info(f"COMPROBANTE: Recibido de {nombre_usuario} | Monto: {monto}")
     
     return True, """
 ✅ <b>¡COMPROBANTE ENVIADO!</b>
@@ -44,6 +44,8 @@ Gracias por tu paciencia 🙏
 # 🔍 VER COMPROBANTES PENDIENTES (ADMIN)
 # ==============================================
 def ver_comprobantes_pendientes():
+    """Muestra lista de pagos esperando aprobación"""
+    
     compras = obtener_comprobantes_pendientes_db()
     
     if not compras:
@@ -59,4 +61,4 @@ def ver_comprobantes_pendientes():
         texto += f"📅 {c['fecha']}\n"
         texto += "────────────────────\n"
     
-    return texto, 
+    return texto, compras
