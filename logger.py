@@ -132,37 +132,37 @@ def registrar_mantenimiento(estado):
     enviar_a_canal(txt)
 
 # 🔻 USUARIOS
-def registrar_usuario_nuevo(uid, nombre):
+def registrar_usuario_nuevo(id_usuario, nombre):
     txt = f"""
 🆕 <b>✨ NUEVO USUARIO REGISTRADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 Nombre: <code>{nombre}</code>
-🆔 ID: <code>{uid}</code>
+🆔 ID: <code>{id_usuario}</code>
 📅 Fecha: <code>{datetime.now().strftime("%d/%m/%Y %H:%M")}</code>
 """
-    log_info(f"NUEVO USUARIO | ID: {uid} | NOMBRE: {nombre}")
+    log_info(f"NUEVO USUARIO | ID: {id_usuario} | NOMBRE: {nombre}")
     enviar_a_canal(txt)
 
-def registrar_acceso(uid, nombre):
-    log_info(f"ACCESO | USUARIO: {uid} | NOMBRE: {nombre}")
+def registrar_acceso(id_usuario, nombre):
+    log_info(f"ACCESO | USUARIO: {id_usuario} | NOMBRE: {nombre}")
 
-def registrar_baneo(uid, nombre, motivo=""):
+def registrar_baneo(id_usuario, nombre, motivo=""):
     txt = f"""
 🚫 <b>⛔ USUARIO BANEADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 📝 Motivo: <code>{motivo}</code>
 """
-    log_warning(f"BANEO | USUARIO: {uid} | MOTIVO: {motivo}")
+    log_warning(f"BANEO | USUARIO: {id_usuario} | MOTIVO: {motivo}")
     enviar_a_canal(txt)
 
 # 🔻 COMPRAS SMM
-def registrar_compra(uid, nombre, servicio, cantidad, monto, ganancia, orden_id):
+def registrar_compra(id_usuario, nombre, servicio, cantidad, monto, ganancia, orden_id):
     txt = f"""
 🛒 <b>💸 COMPRA REALIZADA</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 Cliente: <code>{nombre}</code>
-🆔 ID: <code>{uid}</code>
+🆔 ID: <code>{id_usuario}</code>
 📦 Servicio: <b>{servicio}</b>
 🔢 Cantidad: <code>{cantidad:,}</code>
 🔢 Orden: <code>#{orden_id}</code>
@@ -170,136 +170,136 @@ def registrar_compra(uid, nombre, servicio, cantidad, monto, ganancia, orden_id)
 💰 Ganancia Neta: <b>{MONEDA} {ganancia:.2f}</b>
 📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
-    log_info(f"COMPRA | USUARIO: {uid} | SERV: {servicio} | CANT: {cantidad} | MONTO: ${monto} | GAN: ${ganancia} | ORDEN: #{orden_id}")
+    log_info(f"COMPRA | USUARIO: {id_usuario} | SERV: {servicio} | CANT: {cantidad} | MONTO: ${monto} | GAN: ${ganancia} | ORDEN: #{orden_id}")
     enviar_a_canal(txt)
 
 # 🔻 COMPRAS PREMIUM
-def registrar_compra_premium(uid, nombre, servicio, cuenta, precio):
+def registrar_compra_premium(id_usuario, nombre, servicio, cuenta, precio):
     txt = f"""
 🎬 <b>🎟️ VENTA CUENTA PREMIUM</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 📦 Servicio: <b>{servicio}</b>
 🔑 Cuenta entregada: <code>{cuenta}</code>
 💸 Precio: <b>{MONEDA} {precio:.2f}</b>
 """
-    log_info(f"VENTA PREMIUM | USUARIO: {uid} | SERV: {servicio} | PRECIO: ${precio}")
+    log_info(f"VENTA PREMIUM | USUARIO: {id_usuario} | SERV: {servicio} | PRECIO: ${precio}")
     enviar_a_canal(txt)
 
 # 🔻 PAGOS Y SALDO
-def registrar_pago(uid, nombre, metodo, monto):
+def registrar_pago(id_usuario, nombre, metodo, monto):
     txt = f"""
 💳 <b>💰 DEPÓSITO RECIBIDO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 💰 Monto: <b>{MONEDA} {monto:.2f}</b>
 🏦 Método: <b>{metodo}</b>
 📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
-    log_info(f"PAGO | USUARIO: {uid} | METODO: {metodo} | MONTO: ${monto}")
+    log_info(f"PAGO | USUARIO: {id_usuario} | METODO: {metodo} | MONTO: ${monto}")
     enviar_a_canal(txt)
 
-def registrar_add_saldo(uid, nombre, monto, admin_nombre):
+def registrar_add_saldo(id_usuario, nombre, monto, admin_nombre):
     txt = f"""
 💰 <b>➕ SALDO AGREGADO MANUAL</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Usuario: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Usuario: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 💵 Monto: <b>{MONEDA} {monto:.2f}</b>
 👑 Por Admin: <code>{admin_nombre}</code>
 """
-    log_info(f"SALDO + | USUARIO: {uid} | MONTO: ${monto} | ADMIN: {admin_nombre}")
+    log_info(f"SALDO + | USUARIO: {id_usuario} | MONTO: ${monto} | ADMIN: {admin_nombre}")
     enviar_a_canal(txt)
 
-def registrar_sub_saldo(uid, nombre, monto, admin_nombre):
+def registrar_sub_saldo(id_usuario, nombre, monto, admin_nombre):
     txt = f"""
 💰 <b>➖ SALDO RETIRADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Usuario: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Usuario: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 💵 Monto: <b>{MONEDA} {monto:.2f}</b>
 👑 Por Admin: <code>{admin_nombre}</code>
 """
-    log_info(f"SALDO - | USUARIO: {uid} | MONTO: ${monto} | ADMIN: {admin_nombre}")
+    log_info(f"SALDO - | USUARIO: {id_usuario} | MONTO: ${monto} | ADMIN: {admin_nombre}")
     enviar_a_canal(txt)
 
 # 🔻 COMANDOS Y BOTONES
-def registrar_comando(uid, nombre, comando, texto=""):
+def registrar_comando(id_usuario, nombre, comando, texto=""):
     txt = f"""
 ⌨️ <b>⌨️ COMANDO EJECUTADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 🔘 Comando: <code>/{comando}</code>
 📄 Texto: <code>{texto}</code>
 """
-    log_info(f"COMANDO | USUARIO: {uid} | /{comando} | TEXTO: {texto}")
+    log_info(f"COMANDO | USUARIO: {id_usuario} | /{comando} | TEXTO: {texto}")
     enviar_a_canal(txt)
 
-def registrar_boton(uid, nombre, accion):
+def registrar_boton(id_usuario, nombre, accion):
     txt = f"""
 🔘 <b>🔵 BOTÓN PRESIONADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 ⚡ Acción: <code>{accion}</code>
 """
-    log_info(f"BOTON | USUARIO: {uid} | ACCION: {accion}")
+    log_info(f"BOTON | USUARIO: {id_usuario} | ACCION: {accion}")
     enviar_a_canal(txt)
 
 # ==============================================
-# 🤝 SECCION SELLERS - TODO REGISTRADO
+# 🤝 SECCION SELLERS
 # ==============================================
 
-def registrar_seller_creado(uid, nombre, nivel, admin):
+def registrar_seller_creado(id_usuario, nombre, nivel, admin):
     txt = f"""
 🤝 <b>👔 NUEVO VENDEDOR CREADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Nombre: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Nombre: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 🏅 Nivel asignado: <b>{nivel}</b>
 👑 Creado por: <code>{admin}</code>
 """
-    log_info(f"SELLER CREADO | ID: {uid} | NIVEL: {nivel}")
+    log_info(f"SELLER CREADO | ID: {id_usuario} | NIVEL: {nivel}")
     enviar_a_canal(txt)
 
-def registrar_venta_seller(uid, nombre, servicio, monto_total, ganancia_seller):
+def registrar_venta_seller(id_usuario, nombre, servicio, monto_total, ganancia_seller):
     txt = f"""
 🤝 <b>💼 VENTA POR RESELLER</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Vendedor: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Vendedor: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 📦 Servicio: <b>{servicio}</b>
 💸 Monto total: <b>{MONEDA} {monto_total:.2f}</b>
 💎 Ganancia del vendedor: <b>{MONEDA} {ganancia_seller:.2f}</b>
 """
-    log_info(f"VENTA SELLER | ID: {uid} | SERV: {servicio} | GANANCIA: ${ganancia_seller}")
+    log_info(f"VENTA SELLER | ID: {id_usuario} | SERV: {servicio} | GANANCIA: ${ganancia_seller}")
     enviar_a_canal(txt)
 
-def registrar_retiro_seller(uid, nombre, monto):
+def registrar_retiro_seller(id_usuario, nombre, monto):
     txt = f"""
 💸 <b>🏧 RETIRO DE SALDO SOLICITADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Vendedor: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Vendedor: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 💰 Monto a retirar: <b>{MONEDA} {monto:.2f}</b>
 📅 {datetime.now().strftime("%d/%m/%Y %H:%M")}
 """
-    log_info(f"RETIRO SELLER | ID: {uid} | MONTO: ${monto}")
+    log_info(f"RETIRO SELLER | ID: {id_usuario} | MONTO: ${monto}")
     enviar_a_canal(txt)
 
-def registrar_cambio_nivel(uid, nombre, nivel_anterior, nivel_nuevo):
+def registrar_cambio_nivel(id_usuario, nombre, nivel_anterior, nivel_nuevo):
     txt = f"""
 📈 <b>⭐ CAMBIO DE NIVEL SELLER</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Usuario: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Usuario: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 📉 Anterior: <b>{nivel_anterior}</b>
 📈 Nuevo: <b>{nivel_nuevo}</b>
 """
-    log_info(f"NIVEL CAMBIADO | ID: {uid} | DE: {nivel_anterior} A: {nivel_nuevo}")
+    log_info(f"NIVEL CAMBIADO | ID: {id_usuario} | DE: {nivel_anterior} A: {nivel_nuevo}")
     enviar_a_canal(txt)
 
-def registrar_estado_seller(uid, nombre, estado):
+def registrar_estado_seller(id_usuario, nombre, estado):
     txt = f"""
 🔒 <b>🚫 ESTADO DE CUENTA CAMBIADO</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 🔄 Nuevo estado: <b>{estado.upper()}</b>
 """
-    log_info(f"ESTADO SELLER | ID: {uid} | ESTADO: {estado}")
+    log_info(f"ESTADO SELLER | ID: {id_usuario} | ESTADO: {estado}")
     enviar_a_canal(txt)
 
 # 🔻 API Y CONEXIONES
@@ -315,16 +315,16 @@ def registrar_api(accion, estado, detalles=""):
     enviar_a_canal(txt)
 
 # 🔻 ERRORES
-def registrar_error(tipo, descripcion, uid="None", nombre="Desconocido"):
+def registrar_error(tipo, descripcion, id_usuario="None", nombre="Desconocido"):
     txt = f"""
 ⚠️ <b>🔴 ERROR CRÍTICO EN SISTEMA</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔴 Tipo: <code>{tipo}</code>
-👤 Usuario: <code>{nombre}</code> | ID: <code>{uid}</code>
+👤 Usuario: <code>{nombre}</code> | ID: <code>{id_usuario}</code>
 📝 Descripción: <code>{descripcion}</code>
 📅 {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
 """
-    log_error(f"ERROR | {tipo} | USUARIO: {uid} | DESC: {descripcion}")
+    log_error(f"ERROR | {tipo} | USUARIO: {id_usuario} | DESC: {descripcion}")
     enviar_a_canal(txt)
 
 # 🔻 ADMINISTRACIÓN
