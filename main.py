@@ -270,6 +270,20 @@ def callback_handler(call):
     elif data == "volver_tienda":
         bot.delete_message(call.message.chat.id, call.message.message_id)
         cmd_tienda(call.message)
+# Ver cuentas Premium
+elif data == "ver_premium":
+    from premium import menu_premium
+    texto, markup = menu_premium()
+    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+elif data.startswith("comprar_premium_"):
+    key = data.replace("comprar_premium_", "")
+    uid = call.from_user.id
+    nombre = call.from_user.first_name
+    
+    from premium import vender_cuenta_premium
+    exito, respuesta = vender_cuenta_premium(uid, nombre, key)
+    bot.send_message(call.message.chat.id, respuesta, parse_mode="HTML")
 
 # ==============================================
 # 🚀 INICIAR BOT
