@@ -8,7 +8,7 @@
 from datetime import datetime
 from pymongo import MongoClient
 import certifi
-from config import MONGO_URI, MONGO_DB_NAME
+from config import *
 
 # ==============================================
 # 🔌 CONEXIÓN SEGURA
@@ -34,6 +34,8 @@ try:
     cupones_col = db["cupones"]
     tickets_col = db["tickets"]
     configuracion_col = db["configuracion"]
+    cuentas_premium_col = db["cuentas_premium"]
+    precios_col = db["precios"]
     
     print("✅ DATABASE: Conectado correctamente")
     
@@ -48,17 +50,19 @@ except Exception as e:
     cupones_col = None
     tickets_col = None
     configuracion_col = None
+    cuentas_premium_col = None
+    precios_col = None
 
 # ==============================================
 # 👥 USUARIOS
 # ==============================================
-def obtener_usuario_db(uid):
+def obtener_usuario_db(id_usuario):
     if not usuarios_col: return None
-    return usuarios_col.find_one({"id": str(uid)})
+    return usuarios_col.find_one({"id": str(id_usuario)})
 
-def actualizar_usuario_db(uid, datos):
+def actualizar_usuario_db(id_usuario, datos):
     if not usuarios_col: return False
-    return usuarios_col.update_one({"id": str(uid)}, {"$set": datos})
+    return usuarios_col.update_one({"id": str(id_usuario)}, {"$set": datos})
 
 def obtener_todos_usuarios_db():
     if not usuarios_col: return []
@@ -68,12 +72,23 @@ def total_usuarios_db():
     if not usuarios_col: return 0
     return usuarios_col.count_documents({})
 
-def agregar_saldo_db(uid, monto):
+def agregar_saldo_db(id_usuario, monto):
     if not usuarios_col: return False
-    usuario = obtener_usuario_db(uid)
+    usuario = obtener_usuario_db(id_usuario)
     if not usuario: return False
     nuevo_saldo = usuario.get('saldo', 0) + monto
-    return actualizar_usuario_db(uid, {"saldo": nuevo_saldo})
+    return actualizar_usuario_db(id_usuario, {"saldo": nuevo_saldo})
+
+def descontar_saldo(id_usuario, monto):
+    if not usuarios_col: return False
+    usuario = obtener_usuario_db(id_usuario)
+    if not usuario: return False
+    nuevo_saldo = usuario.get('saldo', 0) - monto
+    return actualizar_usuario_db(id_usuario, {"saldo": nuevo_saldo})
+
+def obtener_saldo(id_usuario):
+    usuario = obtener_usuario_db(id_usuario)
+    return usuario.get('saldo', 0) if usuario else 0
 
 # ==============================================
 # 📜 MOVIMIENTOS
@@ -82,9 +97,9 @@ def insertar_movimiento_db(movimiento):
     if not movimientos_col: return False
     return movimientos_col.insert_one(movimiento)
 
-def obtener_movimientos_usuario_db(uid):
+def obtener_movimientos_usuario_db(id_usuario):
     if not movimientos_col: return []
-    return list(movimientos_col.find({"uid": str(uid)}))
+    return list(movimientos_col.find({"uid": str(id_usuario)}))
 
 def obtener_movimientos_fecha_db(fecha):
     if not movimientos_col: return []
@@ -112,6 +127,18 @@ def total_ventas_db():
     if not movimientos_col: return 0
     return movimientos_col.count_documents({"tipo": {"$in": ["COMPRA", "PREMIUM"]}})
 
+def registrar_compra_db(id_usuario, nombre, producto, monto, estado):
+    movimiento = {
+        "uid": str(id_usuario),
+        "nombre": nombre,
+        "producto": producto,
+        "monto": monto,
+        "estado": estado,
+        "fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "tipo": "COMPRA"
+    }
+    return insertar_movimiento_db(movimiento)
+
 # ==============================================
 # 📦 PEDIDOS
 # ==============================================
@@ -127,9 +154,9 @@ def actualizar_pedido_db(pedido_id, datos):
     if not pedidos_col: return False
     return pedidos_col.update_one({"_id": pedido_id}, {"$set": datos})
 
-def obtener_pedidos_usuario_db(uid):
+def obtener_pedidos_usuario_db(id_usuario):
     if not pedidos_col: return []
-    return list(pedidos_col.find({"uid": str(uid)}))
+    return list(pedidos_col.find({"uid": str(id_usuario)}))
 
 # ==============================================
 # 📸 COMPROBANTES
@@ -160,11 +187,6 @@ def actualizar_usos_cupon_db(codigo):
     nuevos_usos = cupon.get('usados', 0) + 1
     return cupones_col.update_one({"codigo": codigo.upper()}, {"$set": {"usados": nuevos_usos}})
 
-def usuario_uso_cupon_db(uid, codigo):
-    if not cupones_col: return False
-    # Verificar si el usuario ya usó este cupón
-    return False  # Implementar si es necesario
-
 def obtener_todos_cupones_db():
     if not cupones_col: return []
     return list(cupones_col.find())
@@ -187,7 +209,6 @@ def obtener_configuracion_db():
     if not configuracion_col: return {}
     config = configuracion_col.find_one()
     if not config:
-        # Crear configuración por defecto
         default = {
             "mantenimiento": False,
             "bienvenida": "¡Hola! Bienvenido al bot.",
@@ -202,26 +223,43 @@ def actualizar_configuracion_db(datos):
     return configuracion_col.update_one({}, {"$set": datos}, upsert=True)
 
 # ==============================================
-# 💳 CUENTAS PREMIUM / STREAMING
+# 🎬 CUENTAS PREMIUM
 # ==============================================
-def insertar_cuenta_db(cuenta):
-    cuentas_col = db["cuentas"]
-    if not cuentas_col: return False
-    return cuentas_col.insert_one(cuenta)
+def agregar_cuentas_premium_db(servicio, cuentas):
+    if not cuentas_premium_col: return False
+    for cuenta_texto in cuentas:
+        partes = cuenta_texto.split('|')
+        if len(partes) >= 3:
+            cuenta = {
+                "servicio": servicio,
+                "usuario": partes[0].strip(),
+                "contraseña": partes[1].strip(),
+                "dias": int(partes[2].strip()),
+                "estado": "DISPONIBLE"
+            }
+            cuentas_premium_col.insert_one(cuenta)
+    return True
 
-def obtener_cuentas_disponibles_db(servicio):
-    cuentas_col = db["cuentas"]
-    if not cuentas_col: return []
-    return list(cuentas_col.find({"servicio": servicio, "estado": "DISPONIBLE"}))
+def obtener_stock_premium_db(servicio):
+    if not cuentas_premium_col: return []
+    return list(cuentas_premium_col.find({"servicio": servicio, "estado": "DISPONIBLE"}))
 
-def actualizar_estado_cuenta_db(cuenta_id, estado, usuario_id=None):
-    cuentas_col = db["cuentas"]
-    if not cuentas_col: return False
-    datos = {"estado": estado}
-    if usuario_id:
-        datos["usado_por"] = usuario_id
-        datos["fecha_uso"] = datetime.now().strftime("%d/%m/%Y %H:%M")
-    return cuentas_col.update_one({"_id": cuenta_id}, {"$set": datos})
+def obtener_precio_premium_db(servicio):
+    if not precios_col: return 0
+    precio_data = precios_col.find_one({"servicio": servicio})
+    return precio_data.get("precio", 0) if precio_data else 0
+
+def actualizar_precio_premium_db(servicio, precio):
+    if not precios_col: return False
+    return precios_col.update_one(
+        {"servicio": servicio},
+        {"$set": {"precio": precio}},
+        upsert=True
+    )
+
+def obtener_historial_premium():
+    if not movimientos_col: return []
+    return list(movimientos_col.find({"tipo": "PREMIUM"}))
 
 # ==============================================
 # 📊 ESTADÍSTICAS
