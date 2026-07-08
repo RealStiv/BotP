@@ -8,10 +8,10 @@
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import *
-from logger import *  # 📝 SISTEMA DE LOGS
+from logger import *  # 📝 Sistema de registros
 
 # ==============================================
-# 🏦 BASE DE DATOS DE MÉTODOS DE PAGO
+# 🏦 BASE DE DATOS DE MÉTODOS
 # ==============================================
 PAYMENT_METHODS = {
     "binance": {
@@ -49,9 +49,10 @@ PAYMENT_METHODS = {
 }
 
 # ==============================================
-# 🎛️ MENÚ PRINCIPAL DE GESTIÓN
+# 🎛️ PANEL PRINCIPAL
 # ==============================================
 def menu_gestion_pagos():
+    """Genera el menú principal de administración"""
     markup = InlineKeyboardMarkup(row_width=2)
     
     texto = f"""
@@ -68,12 +69,12 @@ def menu_gestion_pagos():
 <b>🔧 Selecciona una opción:</b>
 """
     # Botones de métodos
-    for key, metodo in PAYMENT_METHODS.items():
+    for clave, metodo in PAYMENT_METHODS.items():
         estado = "✅" if metodo['activo'] else "❌"
-        btn = InlineKeyboardButton(f"{estado} {metodo['nombre']}", callback_data=f"edit_pay_{key}")
+        btn = InlineKeyboardButton(f"{estado} {metodo['nombre']}", callback_data=f"edit_pay_{clave}")
         markup.add(btn)
     
-    # Botones de acción
+    # Botones generales
     btn_add = InlineKeyboardButton("➕ AGREGAR NUEVO", callback_data="add_new_pay")
     btn_back = InlineKeyboardButton("🔙 VOLVER AL PANEL", callback_data="admin_menu")
     markup.add(btn_add, btn_back)
@@ -83,11 +84,12 @@ def menu_gestion_pagos():
 # ==============================================
 # 📝 EDITAR MÉTODO ESPECÍFICO
 # ==============================================
-def editar_metodo(key):
-    if key not in PAYMENT_METHODS:
+def editar_metodo(clave):
+    """Muestra opciones para un método específico"""
+    if clave not in PAYMENT_METHODS:
         return "❌ Método no encontrado.", None
     
-    metodo = PAYMENT_METHODS[key]
+    metodo = PAYMENT_METHODS[clave]
     estado_txt = "✅ ACTIVO" if metodo['activo'] else "❌ INACTIVO"
     
     texto = f"""
@@ -103,52 +105,53 @@ def editar_metodo(key):
 <b>¿Qué deseas hacer con este método?</b>
 """
     markup = InlineKeyboardMarkup(row_width=1)
-    btn1 = InlineKeyboardButton("🔄 ACTIVAR / DESACTIVAR", callback_data=f"toggle_{key}")
-    btn2 = InlineKeyboardButton("✏️ EDITAR TEXTO / DATOS", callback_data=f"change_text_{key}")
-    btn3 = InlineKeyboardButton("💲 EDITAR COMISIÓN", callback_data=f"change_fee_{key}")
-    btn4 = InlineKeyboardButton("🗑️ ELIMINAR MÉTODO", callback_data=f"delete_pay_{key}")
+    btn1 = InlineKeyboardButton("🔄 ACTIVAR / DESACTIVAR", callback_data=f"toggle_{clave}")
+    btn2 = InlineKeyboardButton("✏️ EDITAR TEXTO / DATOS", callback_data=f"change_text_{clave}")
+    btn3 = InlineKeyboardButton("💲 EDITAR COMISIÓN", callback_data=f"change_fee_{clave}")
+    btn4 = InlineKeyboardButton("🗑️ ELIMINAR MÉTODO", callback_data=f"delete_pay_{clave}")
     btn5 = InlineKeyboardButton("🔙 VOLVER", callback_data="manage_payments")
     markup.add(btn1, btn2, btn3, btn4, btn5)
     
     return texto, markup
 
 # ==============================================
-# 🔄 ACTIVAR / DESACTIVAR
+# 🔄 CAMBIAR ESTADO
 # ==============================================
-def toggle_estado(key, admin_id):
-    if key in PAYMENT_METHODS:
-        PAYMENT_METHODS[key]['activo'] = not PAYMENT_METHODS[key]['activo']
-        nuevo_estado = "✅ ACTIVADO" if PAYMENT_METHODS[key]['activo'] else "❌ DESACTIVADO"
+def toggle_estado(clave, id_admin="Admin"):
+    """Activa o desactiva el método"""
+    if clave in PAYMENT_METHODS:
+        PAYMENT_METHODS[clave]['activo'] = not PAYMENT_METHODS[clave]['activo']
+        nuevo_estado = "✅ ACTIVADO" if PAYMENT_METHODS[clave]['activo'] else "❌ DESACTIVADO"
         
-        # 📝 LOG
-        log_info(f"PAGO: {PAYMENT_METHODS[key]['nombre']} -> {nuevo_estado} por Admin {admin_id}")
+        # 📝 Registro
+        log_info(f"PAGO: {PAYMENT_METHODS[clave]['nombre']} -> {nuevo_estado} | Por: {id_admin}")
         
-        return f"✅ <b>ESTADO CAMBIADO!</b>\n\n{PAYMENT_METHODS[key]['nombre']}\nEstado: {nuevo_estado}"
+        return f"✅ <b>ESTADO CAMBIADO!</b>\n\n{PAYMENT_METHODS[clave]['nombre']}\nEstado: {nuevo_estado}"
     return "❌ Error"
 
 # ==============================================
-# ✏️ EDITAR DATOS
+# ✏️ ACTUALIZAR DATOS
 # ==============================================
-def actualizar_datos(key, nuevo_texto, admin_id):
-    if key in PAYMENT_METHODS:
-        PAYMENT_METHODS[key]['datos'] = nuevo_texto
+def actualizar_datos(clave, nuevo_texto, id_admin="Admin"):
+    """Cambia los datos de pago"""
+    if clave in PAYMENT_METHODS:
+        PAYMENT_METHODS[clave]['datos'] = nuevo_texto
         
-        # 📝 LOG
-        log_info(f"PAGO: Datos editados en {PAYMENT_METHODS[key]['nombre']} por Admin {admin_id}")
+        log_info(f"PAGO: Datos editados en {PAYMENT_METHODS[clave]['nombre']} | Por: {id_admin}")
         
         return f"✅ <b>DATOS ACTUALIZADOS!</b>\n\nLos cambios se ven al instante."
     return "❌ Error"
 
 # ==============================================
-# 💲 EDITAR COMISIÓN
+# 💲 ACTUALIZAR COMISIÓN
 # ==============================================
-def actualizar_comision(key, valor, admin_id):
+def actualizar_comision(clave, valor, id_admin="Admin"):
+    """Cambia el porcentaje de comisión"""
     try:
         valor = float(valor)
-        PAYMENT_METHODS[key]['comision'] = valor
+        PAYMENT_METHODS[clave]['comision'] = valor
         
-        # 📝 LOG
-        log_info(f"PAGO: Comisión cambiada en {PAYMENT_METHODS[key]['nombre']} a {valor}% por Admin {admin_id}")
+        log_info(f"PAGO: Comisión cambiada en {PAYMENT_METHODS[clave]['nombre']} a {valor}% | Por: {id_admin}")
         
         return f"✅ Comisión actualizada a: {valor}%"
     except:
@@ -157,9 +160,10 @@ def actualizar_comision(key, valor, admin_id):
 # ==============================================
 # ➕ AGREGAR NUEVO MÉTODO
 # ==============================================
-def agregar_nuevo(nombre, datos, comision=0.0, admin_id="Admin"):
-    new_id = f"custom_{len(PAYMENT_METHODS)+1}"
-    PAYMENT_METHODS[new_id] = {
+def agregar_nuevo(nombre, datos, comision=0.0, id_admin="Admin"):
+    """Crea una nueva opción de pago"""
+    nueva_clave = f"custom_{len(PAYMENT_METHODS)+1}"
+    PAYMENT_METHODS[nueva_clave] = {
         "nombre": nombre,
         "estado": "activo",
         "monedas": ["USD", "BOB"],
@@ -168,33 +172,32 @@ def agregar_nuevo(nombre, datos, comision=0.0, admin_id="Admin"):
         "activo": True
     }
     
-    # 📝 LOG
-    log_info(f"PAGO: Nuevo método creado '{nombre}' por {admin_id}")
+    log_info(f"PAGO: Nuevo método '{nombre}' creado | Por: {id_admin}")
     
     return f"✅ <b>MÉTODO CREADO!</b>\n\n{nombre} ✅ Activado y listo."
 
 # ==============================================
 # 🗑️ ELIMINAR MÉTODO
 # ==============================================
-def eliminar_metodo(key, admin_id):
-    if key in PAYMENT_METHODS:
-        nombre = PAYMENT_METHODS[key]['nombre']
-        del PAYMENT_METHODS[key]
+def eliminar_metodo(clave, id_admin="Admin"):
+    """Elimina el método del sistema"""
+    if clave in PAYMENT_METHODS:
+        nombre = PAYMENT_METHODS[clave]['nombre']
+        del PAYMENT_METHODS[clave]
         
-        # 📝 LOG
-        log_info(f"PAGO: Método eliminado '{nombre}' por Admin {admin_id}")
+        log_info(f"PAGO: Método eliminado '{nombre}' | Por: {id_admin}")
         
         return f"🗑️ <b>MÉTODO ELIMINADO</b>\n{nombre} ha sido borrado correctamente."
     return "❌ Error"
 
 # ==============================================
-# 📋 LISTAR PARA USUARIOS (Solo activos)
+# 📋 VISTA PARA USUARIOS
 # ==============================================
 def obtener_metodos_pago():
-    """Devuelve el texto con los métodos visibles para usuarios"""
+    """Muestra solo métodos activos al público"""
     texto = "💳 <b>MÉTODOS DE PAGO DISPONIBLES</b>\n\n"
     
-    for key, metodo in PAYMENT_METHODS.items():
+    for clave, metodo in PAYMENT_METHODS.items():
         if metodo['activo']:
             texto += f"{metodo['nombre']}\n"
             texto += f"{metodo['datos']}\n"
@@ -206,19 +209,16 @@ def obtener_metodos_pago():
     return texto
 
 def obtener_metodos_activos():
-    activos = {}
-    for key, m in PAYMENT_METHODS.items():
-        if m['activo']:
-            activos[key] = m
-    return activos
+    """Devuelve diccionario con solo activos"""
+    return {k: v for k, v in PAYMENT_METHODS.items() if v['activo']}
 
 # ==============================================
-# 💰 CALCULAR COMISIÓN
+# 💰 CÁLCULO DE PRECIO FINAL
 # ==============================================
-def aplicar_comision(monto, metodo_key):
-    """Aplica la comisión del método de pago al monto"""
-    if metodo_key in PAYMENT_METHODS:
-        comision = PAYMENT_METHODS[metodo_key]['comision']
+def aplicar_comision(monto, clave_metodo):
+    """Suma la comisión del método al monto base"""
+    if clave_metodo in PAYMENT_METHODS:
+        comision = PAYMENT_METHODS[clave_metodo]['comision']
         monto_final = monto + (monto * comision / 100)
         return round(monto_final, 2)
-    return monto
+    return round(monto, 2)
