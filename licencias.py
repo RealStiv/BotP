@@ -36,7 +36,7 @@ def crear_licencia(tipo="PREMIUM", duracion=30, usos_max=1):
     usos_max: cantidad de activaciones permitidas
     """
     key = generar_key()
-    fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+    fecha_creacion = datetime.now().strftime("%d/%m/%Y %H:%M")
     
     licencia = {
         "key": key,
@@ -44,11 +44,10 @@ def crear_licencia(tipo="PREMIUM", duracion=30, usos_max=1):
         "duracion": duracion,
         "usos_max": usos_max,
         "usados": 0,
-        "fecha_creacion": fecha,
+        "fecha_creacion": fecha_creacion,
         "estado": "ACTIVA"
     }
     
-    # Insertar en MongoDB
     insertar_licencia_db(licencia)
     
     # 📝 LOG
@@ -77,7 +76,7 @@ def validar_licencia(key):
 # ==============================================
 # 🚀 ACTIVAR LICENCIA
 # ==============================================
-def activar_licencia(uid, nombre, key):
+def activar_licencia(id_usuario, nombre_usuario, key):
     """Activar licencia para un usuario específico"""
     
     valido, datos = validar_licencia(key)
@@ -86,7 +85,7 @@ def activar_licencia(uid, nombre, key):
         return False, datos
     
     # Verificar si ya la usó este usuario
-    if verificar_uso_licencia(key, uid):
+    if verificar_uso_licencia(key, id_usuario):
         return False, "✅ Ya tienes activada esta licencia"
     
     # Calcular fecha de expiración
@@ -100,27 +99,27 @@ def activar_licencia(uid, nombre, key):
     # Registrar uso
     registro_uso = {
         "key": key,
-        "uid": str(uid),
-        "nombre": nombre,
+        "uid": str(id_usuario),
+        "nombre": nombre_usuario,
         "fecha_uso": datetime.now().strftime("%d/%m/%Y %H:%M")
     }
     insertar_uso_licencia(registro_uso)
     
-    # 📝 GUARDAR EN DATOS DEL USUARIO
-    actualizar_licencia_usuario(uid, datos['tipo'], fecha_fin.strftime("%d/%m/%Y"))
+    # 📝 Guardar en datos del usuario
+    actualizar_licencia_usuario(id_usuario, datos['tipo'], fecha_fin.strftime("%d/%m/%Y"))
     
-    # 📢 LOG EN CANAL
-    txt = f"""
+    # 📢 LOG en canal
+    mensaje_log = f"""
 🔑 <b>✅ LICENCIA ACTIVADA</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Usuario: <code>{nombre}</code>
-🆔 ID: <code>{uid}</code>
+👤 Usuario: <code>{nombre_usuario}</code>
+🆔 ID: <code>{id_usuario}</code>
 🔐 Key: <code>{key}</code>
 💎 Plan: <b>{datos['tipo']}</b>
 📅 Expira: <code>{fecha_fin.strftime("%d/%m/%Y")}</code>
 """
-    log_info(f"LICENCIA ACTIVADA | USUARIO: {uid} | KEY: {key} | PLAN: {datos['tipo']}")
-    enviar_a_canal(txt)
+    log_info(f"LICENCIA ACTIVADA | USUARIO: {id_usuario} | KEY: {key} | PLAN: {datos['tipo']}")
+    enviar_a_canal(mensaje_log)
     
     return True, f"""
 ✅ <b>¡LICENCIA ACTIVADA CORRECTAMENTE!</b>
@@ -134,17 +133,17 @@ def activar_licencia(uid, nombre, key):
 # ==============================================
 # 👤 GESTIÓN POR USUARIO
 # ==============================================
-def actualizar_licencia_usuario(uid, plan, fecha_fin):
+def actualizar_licencia_usuario(id_usuario, plan, fecha_fin):
     """Actualizar datos de licencia en la colección usuarios"""
     datos = {
         "licencia_plan": plan,
         "licencia_fin": fecha_fin
     }
-    actualizar_usuario_db(uid, datos)
+    actualizar_usuario_db(id_usuario, datos)
 
-def verificar_licencia_usuario(uid):
+def verificar_licencia_usuario(id_usuario):
     """Verificar si el usuario tiene licencia activa"""
-    usuario = obtener_usuario_db(uid)
+    usuario = obtener_usuario_db(id_usuario)
     
     if not usuario or 'licencia_plan' not in usuario or not usuario['licencia_plan']:
         return False, "🔒 Necesitas una licencia para usar el bot"
@@ -159,10 +158,10 @@ def verificar_licencia_usuario(uid):
     
     return True, usuario['licencia_plan']
 
-def verificar_uso_licencia(key, uid):
+def verificar_uso_licencia(key, id_usuario):
     """Verifica si este usuario ya usó esta key"""
     usos = obtener_usuarios_licencia(key)
-    uid_str = str(uid)
+    uid_str = str(id_usuario)
     for uso in usos:
         if uso.get('uid') == uid_str:
             return True
