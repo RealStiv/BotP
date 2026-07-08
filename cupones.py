@@ -13,8 +13,9 @@ from logger import *
 # 🎟️ CREAR NUEVO CUPÓN
 # ==============================================
 def crear_cupon(codigo, monto, usos_max=1):
-    """Crea un cupón nuevo"""
-    cupon = {
+    """Crea un nuevo cupón en la base de datos"""
+    
+    nuevo_cupon = {
         "codigo": codigo.upper(),
         "monto": float(monto),
         "usos_max": int(usos_max),
@@ -22,15 +23,16 @@ def crear_cupon(codigo, monto, usos_max=1):
         "fecha_creacion": datetime.now().strftime("%d/%m/%Y")
     }
     
-    insertar_cupon_db(cupon)
+    insertar_cupon_db(nuevo_cupon)
     log_info(f"CUPÓN CREADO: {codigo} | MONTO: {monto}")
     return True
 
 # ==============================================
 # ✅ CANJEAR CUPÓN
 # ==============================================
-def canjear_cupon(uid, nombre, codigo):
-    """Procesa el canje de un cupón"""
+def canjear_cupon(id_usuario, nombre_usuario, codigo):
+    """Procesa el canje y acredita el saldo"""
+    
     codigo = codigo.upper().strip()
     
     # Buscar cupón
@@ -42,21 +44,21 @@ def canjear_cupon(uid, nombre, codigo):
     if cupon['usados'] >= cupon['usos_max']:
         return False, "⚠️ <b>Este cupón ya se agotó</b>"
     
-    # Verificar si ya lo usó este usuario
-    if usuario_uso_cupon_db(uid, codigo):
+    # Verificar uso previo
+    if usuario_uso_cupon_db(id_usuario, codigo):
         return False, "🔒 <b>Ya utilizaste este código</b>"
     
     # Acreditar saldo
-    agregar_saldo_db(uid, cupon['monto'])
+    agregar_saldo_db(id_usuario, cupon['monto'])
     
     # Registrar uso
-    registrar_uso_cupon_db(uid, codigo, nombre)
+    registrar_uso_cupon_db(id_usuario, codigo, nombre_usuario)
     
     # Actualizar contador
     actualizar_usos_cupon_db(codigo)
     
     # LOG
-    log_info(f"CANJEO: {nombre} usó {codigo} | +{cupon['monto']}")
+    log_info(f"CANJEO: {nombre_usuario} usó {codigo} | +{cupon['monto']}")
     
     return True, f"""
 🎉 <b>¡CUPÓN CANJEADO CON ÉXITO!</b>
@@ -68,9 +70,11 @@ def canjear_cupon(uid, nombre, codigo):
 """
 
 # ==============================================
-# 📋 LISTAR CUPONES ACTIVOS (ADMIN)
+# 📋 LISTAR PARA ADMINISTRADOR
 # ==============================================
 def listar_cupones_admin():
+    """Muestra estado de todos los cupones"""
+    
     cupones = obtener_todos_cupones_db()
     
     if not cupones:
