@@ -482,52 +482,51 @@ SERVICIOS = {
 # ==============================================
 # 🧮 FUNCIÓN DE CÁLCULO
 # ==============================================
-def calcular_precio_total(servicio_id, cantidad, uid=None):
+def calcular_precio_total(servicio_id, cantidad, uid_usuario=None):
     """
     Calcula precio final, costo y ganancia.
-    Si es Seller, aplica su comisión.
+    Si es Seller, aplica su comisión personalizada.
     """
-    servicio = SERVICIOS.get(servicio_id, None)
+    servicio = SERVICIOS.get(servicio_id)
+    
     if not servicio:
         return 0, 0, 0
     
     precio_base = servicio['precio_por_mil']
     costo_real = servicio['costo_real']
-    
-    # Si es Seller, calcular precio con descuento
-    precio_final = precio_base
     ganancia = servicio['ganancia_base']
-    
-    if uid:
-        if es_seller(uid):
-            datos_seller = obtener_datos(uid)
-            if datos_seller and "info_nivel" in datos_seller:
-                comision = datos_seller['info_nivel']['comision']
-                descuento = (precio_base * comision) / 100
-                precio_final = precio_base - descuento
-                ganancia = descuento  # La ganancia del seller es el descuento
-    
-    # Calcular totales
-    total_cobrar = (precio_final / 1000) * cantidad
-    total_costo = (costo_real / 1000) * cantidad
-    total_ganancia = (ganancia / 1000) * cantidad
-    
-    return round(total_cobrar, 4), round(total_costo, 4), round(total_ganancia, 4)
+    precio_final = precio_base
+
+    # Aplicar descuento si es vendedor
+    if uid_usuario and es_seller(uid_usuario):
+        datos_seller = obtener_datos(uid_usuario)
+        if datos_seller and "info_nivel" in datos_seller:
+            comision = datos_seller['info_nivel'].get('comision', 0)
+            descuento = (precio_base * comision) / 100
+            precio_final = precio_base - descuento
+            ganancia = descuento  # La ganancia del sistema se ajusta al descuento
+
+    # Calcular montos finales
+    total_cobrar = round((precio_final / 1000) * cantidad, 4)
+    total_costo = round((costo_real / 1000) * cantidad, 4)
+    total_ganancia = round((ganancia / 1000) * cantidad, 4)
+
+    return total_cobrar, total_costo, total_ganancia
 
 # ==============================================
-# 📋 LISTAR SERVICIOS
+# 📋 FUNCIONES DE CONSULTA
 # ==============================================
 def listar_servicios():
-    """Retorna todos los servicios disponibles"""
+    """Retorna el catálogo completo de servicios"""
     return SERVICIOS
 
 def obtener_servicio(servicio_id):
-    """Obtiene un servicio específico"""
-    return SERVICIOS.get(servicio_id, None)
+    """Obtiene datos de un servicio específico"""
+    return SERVICIOS.get(servicio_id)
 
 def buscar_por_api_id(api_id):
-    """Busca servicio por ID de API"""
-    for key, data in SERVICIOS.items():
-        if data.get('api_id') == api_id:
-            return key, data
+    """Busca servicio por su ID de API externa"""
+    for clave, datos in SERVICIOS.items():
+        if datos.get('api_id') == api_id:
+            return clave, datos
     return None, None
