@@ -7,6 +7,7 @@
 
 import telebot
 from telebot.types import *
+from datetime import datetime
 from config import *
 from database import *
 from logger import *
@@ -22,11 +23,15 @@ log_info("🤖 BOT INICIANDO...")
 log_info(f"🔋 Estado: ONLINE")
 log_info("="*50)
 
-# Importar módulos después de definir el bot
+# ==============================================
+# 📦 IMPORTAR MÓDULOS COMPLETOS
+# ==============================================
 from admin import registrar_comandos_admin, handle_admin_callback
 from comprobantes import guardar_comprobante
 from cupones import canjear_cupon
 from tarjetas import menu_tienda, obtener_bases, vender_tarjeta
+from smm import menu_smm, crear_pedido_smm  # ✅ NUEVO
+from premium import menu_premium, vender_cuenta_premium  # ✅ NUEVO
 
 # ==============================================
 # 👋 COMANDO /START
@@ -149,7 +154,27 @@ def cmd_tienda(msg):
 # ==============================================
 @bot.message_handler(func=lambda m: m.text == "📜 HISTORIAL")
 def cmd_historial(msg):
-    bot.send_message(msg.chat.id, "📜 <b>HISTORIAL DE OPERACIONES</b>\n\n✅ Funcionalidad lista para conectar.", parse_mode="HTML")
+    uid = msg.from_user.id
+    movimientos = obtener_movimientos_usuario_db(uid)
+    
+    if not movimientos:
+        bot.send_message(msg.chat.id, "📜 <b>No tienes historial de operaciones</b>", parse_mode="HTML")
+        return
+    
+    texto = "📜 <b>HISTORIAL DE OPERACIONES</b>\n\n"
+    
+    for mov in movimientos[-10:]:  # Ultimos 10
+        tipo = mov.get('tipo', 'OPERACIÓN')
+        producto = mov.get('producto', 'Varios')
+        monto = mov.get('monto', 0)
+        fecha = mov.get('fecha', 'Desconocida')
+        
+        texto += f"📅 {fecha}\n"
+        texto += f"📝 {tipo}: {producto}\n"
+        texto += f"💰 {MONEDA} {monto:.2f}\n"
+        texto += "──────────────────────────\n"
+    
+    bot.send_message(msg.chat.id, texto, parse_mode="HTML")
 
 # ==============================================
 # 🏅 MI NIVEL
@@ -243,7 +268,7 @@ def callback_handler(call):
         handle_admin_callback(bot, call)
         return
     
-    # Ver tarjetas
+    # Ver Tarjetas
     elif data == "ver_tarjetas":
         texto = menu_tienda()
         bases = obtener_bases()
@@ -267,23 +292,27 @@ def callback_handler(call):
         exito, respuesta = vender_tarjeta(uid, nombre, key)
         bot.send_message(call.message.chat.id, respuesta, parse_mode="HTML")
     
+    # Ver Premium
+    elif data == "ver_premium":
+        texto, markup = menu_premium()
+        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+    
+    elif data.startswith("comprar_premium_"):
+        key = data.replace("comprar_premium_", "")
+        uid = call.from_user.id
+        nombre = call.from_user.first_name
+        
+        exito, respuesta = vender_cuenta_premium(uid, nombre, key)
+        bot.send_message(call.message.chat.id, respuesta, parse_mode="HTML")
+    
+    # Ver SMM
+    elif data == "ver_smm":
+        texto, markup = menu_smm()
+        bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+    
     elif data == "volver_tienda":
         bot.delete_message(call.message.chat.id, call.message.message_id)
         cmd_tienda(call.message)
-# Ver cuentas Premium
-elif data == "ver_premium":
-    from premium import menu_premium
-    texto, markup = menu_premium()
-    bot.edit_message_text(texto, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
-
-elif data.startswith("comprar_premium_"):
-    key = data.replace("comprar_premium_", "")
-    uid = call.from_user.id
-    nombre = call.from_user.first_name
-    
-    from premium import vender_cuenta_premium
-    exito, respuesta = vender_cuenta_premium(uid, nombre, key)
-    bot.send_message(call.message.chat.id, respuesta, parse_mode="HTML")
 
 # ==============================================
 # 🚀 INICIAR BOT
