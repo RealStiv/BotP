@@ -9,11 +9,11 @@
 import time
 from datetime import datetime, timedelta
 from config import *
-from logger import *      # 📝 SISTEMA DE LOGS
-from database import *    # 🍃 MONGODB
+from logger import *      # 📝 Sistema de registros
+from database import *    # 🍃 Conexión MongoDB
 
 # ==============================================
-# 🗄️ BASE DE DATOS DE CUENTAS
+# 🗄️ STOCK DE CUENTAS
 # ==============================================
 # Formato: "usuario|contraseña|dias_garantia"
 # ==============================================
@@ -47,7 +47,7 @@ CUENTAS_DISPONIBLES = {
 }
 
 # ==============================================
-# 🏷️ PRECIOS Y NOMBRES
+# 🏷️ CATÁLOGO DE SERVICIOS
 # ==============================================
 SERVICIOS_PREMIUM = {
     "netflix": {
@@ -91,105 +91,105 @@ SERVICIOS_PREMIUM = {
 # ==============================================
 # 🎫 FUNCIÓN PRINCIPAL: ENTREGAR CUENTA
 # ==============================================
-def entregar_cuenta(servicio_id, uid, nombre, metodo_pago="Manual"):
+def entregar_cuenta(id_servicio, id_usuario, nombre_usuario, metodo_pago="Manual"):
     """
-    Saca una cuenta del stock, la entrega y registra la venta
-    Retorna: (usuario, contraseña, dias_garantia) o None
+    Saca una cuenta del stock, la entrega y registra la venta.
+    Retorna: (datos_cuenta, informacion_servicio) o (None, mensaje_error)
     """
-    if servicio_id not in CUENTAS_DISPONIBLES:
+    if id_servicio not in CUENTAS_DISPONIBLES:
         return None, "❌ Servicio no encontrado"
     
-    if len(CUENTAS_DISPONIBLES[servicio_id]) == 0:
+    if len(CUENTAS_DISPONIBLES[id_servicio]) == 0:
         return None, "⚠️ <b>AGOTADO</b>\nNo hay stock disponible por el momento."
     
-    # Sacar la primera cuenta de la lista
-    cuenta_completa = CUENTAS_DISPONIBLES[servicio_id].pop(0)
-    usuario_cuenta, contraseña_cuenta, dias = cuenta_completa.split("|")
+    # Extraer primera cuenta de la lista
+    cuenta_completa = CUENTAS_DISPONIBLES[id_servicio].pop(0)
+    usuario_cuenta, contraseña_cuenta, dias_garantia = cuenta_completa.split("|")
     
     # Obtener precio y calcular ganancia
-    info = SERVICIOS_PREMIUM[servicio_id]
-    precio_venta, ganancia = calcular_precio_y_comision(uid, info['precio'])
+    info_servicio = SERVICIOS_PREMIUM[id_servicio]
+    precio_venta, ganancia = calcular_precio_y_comision(id_usuario, info_servicio['precio'])
     
-    # 📝 REGISTRAR EN MONGODB
-    venta_db = {
-        "uid": str(uid),
-        "nombre": nombre,
-        "servicio": info['nombre'],
+    # 📝 Guardar en base de datos
+    registro_venta = {
+        "uid": str(id_usuario),
+        "nombre": nombre_usuario,
+        "servicio": info_servicio['nombre'],
         "precio": precio_venta,
         "ganancia": ganancia,
         "cuenta": usuario_cuenta,
         "metodo": metodo_pago,
         "fecha": datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "garantia_hasta": (datetime.now() + timedelta(days=int(dias))).strftime("%d/%m/%Y")
+        "garantia_hasta": (datetime.now() + timedelta(days=int(dias_garantia))).strftime("%d/%m/%Y")
     }
-    guardar_venta_premium(venta_db)
+    guardar_venta_premium(registro_venta)
     
-    # 📢 LOG EN CANAL
-    txt_log = f"""
+    # 📢 Notificación al canal y Log
+    mensaje_log = f"""
 🎬 <b>¡VENTA PREMIUM!</b>
-👤 Usuario: {nombre}
-🆔 ID: <code>{uid}</code>
-📦 Producto: {info['nombre']}
+👤 Usuario: {nombre_usuario}
+🆔 ID: <code>{id_usuario}</code>
+📦 Producto: {info_servicio['nombre']}
 💸 Precio: {MONEDA} {precio_venta}
 💰 Ganancia: {MONEDA} {ganancia}
 🔐 Cuenta: <code>{usuario_cuenta}</code>
 """
-    enviar_a_canal(txt_log)
-    log_info(f"VENTA PREMIUM | Usuario: {uid} | {info['nombre']} | ${precio_venta}")
+    enviar_a_canal(mensaje_log)
+    log_info(f"VENTA PREMIUM | Usuario: {id_usuario} | {info_servicio['nombre']} | ${precio_venta}")
     
-    return (usuario_cuenta, contraseña_cuenta, int(dias)), info
+    return (usuario_cuenta, contraseña_cuenta, int(dias_garantia)), info_servicio
 
 # ==============================================
 # 📋 FUNCIONES AUXILIARES
 # ==============================================
-def obtener_info(servicio_id):
-    return SERVICIOS_PREMIUM.get(servicio_id, None)
+def obtener_info(id_servicio):
+    """Obtiene datos de un servicio específico"""
+    return SERVICIOS_PREMIUM.get(id_servicio, None)
 
-def stock_total(servicio_id):
-    return len(CUENTAS_DISPONIBLES.get(servicio_id, []))
+def stock_total(id_servicio):
+    """Cantidad de cuentas disponibles"""
+    return len(CUENTAS_DISPONIBLES.get(id_servicio, []))
 
 def listar_servicios():
+    """Lista completa del catálogo"""
     return SERVICIOS_PREMIUM
 
-def agregar_cuentas(servicio_id, lista_cuentas, admin_id="Admin"):
+def agregar_cuentas(id_servicio, lista_cuentas, id_admin="Admin"):
     """Agrega nuevas cuentas al stock"""
-    if servicio_id in CUENTAS_DISPONIBLES:
-        CUENTAS_DISPONIBLES[servicio_id].extend(lista_cuentas)
+    if id_servicio in CUENTAS_DISPONIBLES:
+        CUENTAS_DISPONIBLES[id_servicio].extend(lista_cuentas)
         
-        # LOG
-        log_info(f"STOCK: Agregadas {len(lista_cuentas)} cuentas a {servicio_id} por {admin_id}")
+        log_info(f"STOCK: +{len(lista_cuentas)} cuentas en {id_servicio} | Por: {id_admin}")
         return True, f"✅ Agregadas {len(lista_cuentas)} cuentas correctamente."
+    
     return False, "❌ Servicio no encontrado"
 
-def obtener_ventas_db():
-    """Obtener historial de MongoDB"""
-    return obtener_historial_premium()
-
 # ==============================================
-# 💰 PRECIOS Y COMISIONES
+# 💰 CÁLCULO DE PRECIOS Y COMISIONES
 # ==============================================
-def calcular_precio_y_comision(uid, precio_base):
-    """Calcula precio final y ganancia según nivel del usuario"""
+def calcular_precio_y_comision(id_usuario, precio_base):
+    """Aplica descuento si es Seller, sino precio normal"""
     from sellers import es_seller, obtener_datos
     
-    if es_seller(uid):
-        datos = obtener_datos(uid)
-        if datos and "info_nivel" in datos:
-            comision = datos['info_nivel']['comision']
-            precio_final = precio_base * (1 - comision / 100)
-            ganancia = precio_base - precio_final
+    if es_seller(id_usuario):
+        datos_seller = obtener_datos(id_usuario)
+        if datos_seller and "info_nivel" in datos_seller:
+            porcentaje = datos_seller['info_nivel']['comision']
+            ganancia = (precio_base * porcentaje) / 100
+            precio_final = precio_base - ganancia
             return round(precio_final, 2), round(ganancia, 2)
     
-    # Si es usuario normal o no hay datos de seller
-    return precio_base, precio_base
+    # Usuario normal
+    return round(precio_base, 2), 0
 
 # ==============================================
-# 📊 VER STOCK PARA PANEL ADMIN
+# 📊 PANEL DE CONTROL - STOCK
 # ==============================================
 def ver_stock_completo():
+    """Muestra estado del stock para admin"""
     texto = "📦 <b>STOCK DE CUENTAS PREMIUM</b>\n\n"
-    for key, cuentas in CUENTAS_DISPONIBLES.items():
-        nombre = SERVICIOS_PREMIUM[key]['nombre']
+    for clave, cuentas in CUENTAS_DISPONIBLES.items():
+        nombre = SERVICIOS_PREMIUM[clave]['nombre']
         cantidad = len(cuentas)
         estado = "🟢" if cantidad > 0 else "🔴"
         texto += f"{estado} <b>{nombre}</b>: <code>{cantidad} unidades</code>\n"
