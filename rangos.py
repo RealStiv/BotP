@@ -7,7 +7,9 @@
 from config import *
 from database import *
 
+# ==============================================
 # 🎖️ DEFINICIÓN DE NIVELES
+# ==============================================
 NIVELES = [
     {
         "nombre": "BRONCE 🪙",
@@ -36,41 +38,42 @@ NIVELES = [
 ]
 
 # ==============================================
-# 📈 CALCULAR NIVEL
+# 📈 CALCULAR NIVEL SEGÚN MONTO
 # ==============================================
 def calcular_nivel(total_gastado):
+    """Calcula qué nivel le corresponde"""
     for nivel in reversed(NIVELES):
         if total_gastado >= nivel['minimo']:
             return nivel
     return NIVELES[0]
 
 # ==============================================
-# ✅ VERIFICAR Y ACTUALIZAR
+# ✅ VERIFICAR Y ACTUALIZAR RANGO
 # ==============================================
-def verificar_rango(uid, nombre, monto_compra=0):
-    """Verifica si el usuario sube de nivel después de comprar"""
+def verificar_rango(id_usuario, nombre_usuario, monto_compra=0):
+    """Verifica si el usuario sube de nivel tras una compra"""
     
-    usuario = obtener_usuario_db(uid)
-    if not usuario:
-        return None
+    datos_usuario = obtener_usuario_db(id_usuario)
+    if not datos_usuario:
+        return None, None
     
-    # Sumar al total gastado
-    total_actual = usuario.get('total_gastado', 0) + monto_compra
-    nivel_anterior = usuario.get('nivel', 'BRONCE 🪙')
+    # Calcular nuevos totales
+    total_actual = datos_usuario.get('total_gastado', 0) + monto_compra
+    nivel_anterior = datos_usuario.get('nivel', 'BRONCE 🪙')
     nuevo_nivel = calcular_nivel(total_actual)
     
-    # Actualizar en DB
-    datos = {
+    # Actualizar en base de datos
+    datos_actualizar = {
         "total_gastado": total_actual,
         "nivel": nuevo_nivel['nombre'],
         "descuento": nuevo_nivel['descuento']
     }
-    actualizar_usuario_db(uid, datos)
+    actualizar_usuario_db(id_usuario, datos_actualizar)
     
     # ¿Subió de nivel?
     if nivel_anterior != nuevo_nivel['nombre']:
         mensaje = f"""
-🎉 <b>¡FELICIDADES {nombre}!</b>
+🎉 <b>¡FELICIDADES {nombre_usuario}!</b>
 
 🔺 Has subido de nivel:
 {nivel_anterior} ➡️ {nuevo_nivel['nombre']}
@@ -85,18 +88,19 @@ def verificar_rango(uid, nombre, monto_compra=0):
     return False, None
 
 # ==============================================
-# 📋 VER MI NIVEL
+# 📋 VER INFORMACIÓN DE MI PERFIL
 # ==============================================
-def ver_mi_nivel(uid):
-    usuario = obtener_usuario_db(uid)
-    if not usuario:
-        return "❌ Error"
+def ver_mi_nivel(id_usuario):
+    """Muestra nivel actual y progreso"""
+    datos_usuario = obtener_usuario_db(id_usuario)
+    if not datos_usuario:
+        return "❌ Error al obtener datos"
     
-    total = usuario.get('total_gastado', 0)
-    nivel_actual = usuario.get('nivel', 'BRONCE 🪙')
-    descuento = usuario.get('descuento', 0)
+    total = datos_usuario.get('total_gastado', 0)
+    nivel_actual = datos_usuario.get('nivel', 'BRONCE 🪙')
+    descuento = datos_usuario.get('descuento', 0)
     
-    # Calcular cuánto falta para el siguiente
+    # Calcular siguiente nivel
     info_nivel = calcular_nivel(total)
     siguiente = None
     for n in NIVELES:
