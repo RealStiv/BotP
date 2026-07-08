@@ -8,33 +8,46 @@ from config import *
 from database import *
 from logger import *
 
-def enviar_broadcast(bot, mensaje, admin_id):
-    """Envía mensaje a TODOS los usuarios"""
+# ==============================================
+# 📨 FUNCIÓN PRINCIPAL
+# ==============================================
+def enviar_broadcast(bot, mensaje, id_admin):
+    """
+    Envía un mensaje HTML a todos los usuarios registrados
+    """
     
-    if str(admin_id) != str(ADMIN_ID):
-        return "❌ No permitido"
+    # Verificar permisos
+    if str(id_admin) != str(ADMIN_ID):
+        return "❌ Acceso denegado."
     
+    # Obtener lista de usuarios
     usuarios = obtener_todos_usuarios_db()
-    enviados = 0
-    fallidos = 0
     
+    if not usuarios:
+        return "📭 No hay usuarios registrados aún."
+    
+    contador_exitos = 0
+    contador_errores = 0
+    
+    # 📝 LOG de inicio
     log_info(f"BROADCAST: Iniciando envío a {len(usuarios)} usuarios")
     
     for usuario in usuarios:
         try:
-            uid = int(usuario['id'])
-            bot.send_message(uid, mensaje, parse_mode="HTML")
-            enviados += 1
+            id_destino = int(usuario['id'])
+            bot.send_message(id_destino, mensaje, parse_mode="HTML")
+            contador_exitos += 1
         except:
-            fallidos += 1
+            contador_errores += 1
     
+    # Reporte final
     resultado = f"""
 📢 <b>ENVÍO COMPLETO</b>
 
-✅ Enviados: <code>{enviados}</code>
-❌ Fallidos: <code>{fallidos}</code>
+✅ Enviados: <code>{contador_exitos}</code>
+❌ Fallidos: <code>{contador_errores}</code>
 📊 Total: <code>{len(usuarios)}</code>
 """
     
-    log_info(f"BROADCAST: Finalizado | OK: {enviados} | FAIL: {fallidos}")
+    log_info(f"BROADCAST: Finalizado | OK: {contador_exitos} | FAIL: {contador_errores}")
     return resultado
