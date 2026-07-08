@@ -13,12 +13,14 @@ from logger import *
 from database import *  # 🍃 Conexión MongoDB
 
 # ==============================================
-# 🆕 CREAR SORTEO
+# 🆕 CREAR NUEVO SORTEO
 # ==============================================
 def crear_sorteo(titulo, premio, tipo="saldo", cantidad=0, dias_duracion=7):
+    """Crea un nuevo sorteo en la base de datos"""
+    
     id_sorteo = f"SORTEO-{int(time.time())}"
-    inicio = datetime.now()
-    fin = inicio + timedelta(days=dias_duracion)
+    fecha_inicio = datetime.now()
+    fecha_fin = fecha_inicio + timedelta(days=dias_duracion)
     
     sorteo = {
         "id": id_sorteo,
@@ -26,14 +28,13 @@ def crear_sorteo(titulo, premio, tipo="saldo", cantidad=0, dias_duracion=7):
         "premio": premio,
         "tipo": tipo,
         "cantidad": cantidad,
-        "inicio": inicio.strftime("%d/%m/%Y %H:%M"),
-        "fin": fin.strftime("%d/%m/%Y %H:%M"),
+        "inicio": fecha_inicio.strftime("%d/%m/%Y %H:%M"),
+        "fin": fecha_fin.strftime("%d/%m/%Y %H:%M"),
         "participantes": [],
         "ganadores": [],
         "estado": "ACTIVO"
     }
     
-    # Guardar en MongoDB
     insertar_sorteo_db(sorteo)
     
     # 📝 LOG
@@ -42,46 +43,48 @@ def crear_sorteo(titulo, premio, tipo="saldo", cantidad=0, dias_duracion=7):
     return id_sorteo
 
 # ==============================================
-# 🎟️ PARTICIPAR
+# 🎟️ SISTEMA DE PARTICIPACIÓN
 # ==============================================
-def participar(uid, id_sorteo):
-    uid = str(uid)
+def participar(id_usuario, id_sorteo):
+    """Registra al usuario en el sorteo si es válido"""
     
-    # Obtener sorteo
+    id_usuario = str(id_usuario)
     sorteo = obtener_sorteo_db(id_sorteo)
     
     if not sorteo:
         return False, "❌ Sorteo no encontrado"
     
     if sorteo["estado"] != "ACTIVO":
-        return False, "⏳ Sorteo finalizado"
+        return False, "⏳ Sorteo finalizado o cerrado"
     
-    if uid in sorteo["participantes"]:
+    if id_usuario in sorteo["participantes"]:
         return False, "✅ Ya estás participando! 🍀"
     
     # Agregar participante
-    sorteo["participantes"].append(uid)
+    sorteo["participantes"].append(id_usuario)
     actualizar_sorteo_db(id_sorteo, {"participantes": sorteo["participantes"]})
     
-    return True, f"🎉 ¡Registrado!\n👥 Total: {len(sorteo['participantes'])}"
+    return True, f"🎉 ¡Registrado!\n👥 Total: {len(sorteo['participantes'])} participantes"
 
 # ==============================================
 # 🏆 ELEGIR GANADORES
 # ==============================================
 def elegir_ganadores(id_sorteo, cantidad=1):
+    """Selecciona ganadores al azar y cierra el sorteo"""
+    
     sorteo = obtener_sorteo_db(id_sorteo)
     
     if not sorteo:
-        return None, "No existe"
+        return None, "❌ Sorteo no existe"
     
     if len(sorteo["participantes"]) == 0:
-        return [], "Sin participantes"
+        return [], "⚠️ No hay participantes para elegir"
     
-    # Seleccionar ganadores
+    # Selección aleatoria
     random.shuffle(sorteo["participantes"])
     ganadores_ids = sorteo["participantes"][:cantidad]
     
-    # Actualizar estado y guardar ganadores
+    # Actualizar estado
     datos_actualizar = {
         "estado": "FINALIZADO",
         "ganadores": ganadores_ids
@@ -91,36 +94,38 @@ def elegir_ganadores(id_sorteo, cantidad=1):
     # 📝 LOG
     log_info(f"SORTEO FINALIZADO | ID: {id_sorteo} | GANADORES: {len(ganadores_ids)}")
     
-    return ganadores_ids, "Finalizado"
+    return ganadores_ids, "✅ Sorteo finalizado"
 
 # ==============================================
-# 💸 ENTREGAR PREMIO
+# 💸 ENTREGAR PREMIO AUTOMÁTICO
 # ==============================================
 def entregar_premio(id_sorteo):
-    """Entrega el premio usando la base de datos MongoDB"""
+    """Aplica el premio en la cuenta de los ganadores"""
+    
     sorteo = obtener_sorteo_db(id_sorteo)
     
     if not sorteo or not sorteo.get("ganadores"):
         return False
     
-    for uid in sorteo["ganadores"]:
+    for id_usuario in sorteo["ganadores"]:
         if sorteo["tipo"] == "saldo":
-            # Agregar saldo al usuario
-            actualizar_usuario_db(uid, {"$inc": {"saldo": sorteo["cantidad"]}})
+            # Agregar saldo
+            actualizar_usuario_db(id_usuario, {"$inc": {"saldo": sorteo["cantidad"]}})
             
             # 📝 LOG
-            log_info(f"PREMIO ENTREGADO | USUARIO: {uid} | MONTO: {sorteo['cantidad']}")
+            log_info(f"PREMIO ENTREGADO | USUARIO: {id_usuario} | MONTO: {sorteo['cantidad']}")
             
-            # Notificar al usuario
+            # Notificación
             try:
                 from main import bot
-                bot.send_message(uid, f"""
+                mensaje = f"""
 🎉 <b>¡FELICIDADES! ERES GANADOR 🎉</b>
 
 🏆 Sorteo: <b>{sorteo['titulo']}</b>
 🎁 Has ganado: <b>{MONEDA} {sorteo['cantidad']:.2f}</b>
 💰 Saldo agregado a tu cuenta!
-""")
+"""
+                bot.send_message(id_usuario, mensaje, parse_mode="HTML")
             except:
                 pass
     
@@ -130,19 +135,22 @@ def entregar_premio(id_sorteo):
 # 📋 LISTAR SORTEOS ACTIVOS
 # ==============================================
 def listar_sorteos():
+    """Muestra todos los sorteos abiertos actualmente"""
+    
     sorteos = obtener_sorteos_activos_db()
     
     if not sorteos:
-        return "📭 No hay sorteos activos"
+        return "📭 <b>No hay sorteos activos por el momento</b>"
     
     texto = "🎁 <b>SORTEOS ACTIVOS</b>\n\n"
+    
     for s in sorteos:
         texto += f"""
 ━━━━━━━━━━━━━━━━━━━━━
 🏆 <b>{s['titulo']}</b>
 🎁 Premio: {s['premio']}
 👥 Participantes: {len(s['participantes'])}
-📅 Fin: {s['fin']}
+📅 Finaliza: {s['fin']}
 🆔 ID: <code>{s['id']}</code>
 ━━━━━━━━━━━━━━━━━━━━━
 """
@@ -150,7 +158,8 @@ def listar_sorteos():
     return texto
 
 # ==============================================
-# 📜 VER HISTORIAL DE SORTEOS
+# 📜 HISTORIAL
 # ==============================================
 def historial_sorteos():
+    """Obtiene lista de sorteos finalizados"""
     return obtener_sorteos_finalizados_db()
